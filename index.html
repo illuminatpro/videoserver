@@ -122,6 +122,14 @@
     #exitBtn{position:static;width:auto;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:8px 12px;height:36px}
     #volHint{display:none;position:absolute;z-index:5;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(232,238,246,.45);font-size:12px;pointer-events:none}
     body.watching:not(.controls-on) #volHint{display:block}
+    .air-meters{position:absolute;z-index:7;left:14px;top:14px;display:flex;gap:8px;pointer-events:none}
+    .air-meter{display:flex;flex-direction:column;gap:4px;min-width:92px;background:rgba(16,22,32,.82);border:1px solid #323c4c;border-radius:8px;padding:6px 8px 7px}
+    .air-meter.hot{border-color:rgba(61,214,140,.75)}
+    .air-meter.missing{opacity:.5}
+    .air-name{font-size:11px;color:#c5ceda;line-height:1}
+    .eq{display:flex;align-items:flex-end;gap:2px;height:16px}
+    .eq i{flex:1;height:100%;border-radius:1px;background:#3a4558;transform:scaleY(.12);transform-origin:center bottom}
+    audio.broadcast-audio,audio.viewer-voice{display:none}
     .host-only,.viewer-only{display:none}
     body.role-host .host-only{display:flex}
     body.role-viewer .viewer-only{display:flex}
@@ -334,6 +342,16 @@
           </div>
         </div>
         <div id="volHint">движение мыши — управление</div>
+        <div id="airMeters" class="air-meters">
+          <div class="air-meter" id="meterMic" title="Микрофон — звук в эфир">
+            <span class="air-name">Микрофон</span>
+            <span class="eq" aria-hidden="true"></span>
+          </div>
+          <div class="air-meter host-only" id="meterSys" title="Компьютер — звук в эфир">
+            <span class="air-name">Компьютер</span>
+            <span class="eq" aria-hidden="true"></span>
+          </div>
+        </div>
       </div>
       <aside class="side">
         <div class="side-tabs">
@@ -429,6 +447,9 @@ let login = localStorage.getItem('ss_login') || '';
 let consumedInvite = false;
 let room = null, hostSecret = null, hostSession = null, viewerId = null;
 let displayStream = null, micStream = null, micProcessed = null, micGainNode = null, audioCtx = null;
+let outboundStream = null, micAnalyser = null, sysAnalyser = null;
+const incomingAudio = [];
+const freqScratch = new Uint8Array(32);
 let pollTimer = null, isSharing = false, ignoreEnded = false;
 const peers = new Map();
 let viewerPc = null;
@@ -711,17 +732,147 @@ function ensureCtx() {
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
+function makeAnalyser() {
+  const an = ensureCtx().createAnalyser();
+  an.fftSize = 64;
+  an.smoothingTimeConstant = 0.55;
+  return an;
+}
 function processMic(raw, g) {
   const c = ensureCtx();
-  const s = c.createMediaStreamSource(raw);
+  const src = c.createMediaStreamSource(raw);
   const gain = c.createGain();
   gain.gain.value = g;
-  const d = c.createMediaStreamDestination();
-  s.connect(gain); gain.connect(d);
+  const an = makeAnalyser();
+  const dest = c.createMediaStreamDestination();
+  src.connect(gain);
+  gain.connect(an);
+  gain.connect(dest);
   micGainNode = gain;
-  return d.stream;
+  micAnalyser = an;
+  return dest.stream;
+}
+function buildHostMix(screenStream, rawMic, micGainValue) {
+  const c = ensureCtx();
+  const dest = c.createMediaStreamDestination();
+  let micGain = null;
+  let micAn = null;
+  let sysAn = null;
+  if (rawMic && rawMic.getAudioTracks().length) {
+    micGain = c.createGain();
+    micGain.gain.value = micGainValue;
+    micAn = makeAnalyser();
+    c.createMediaStreamSource(rawMic).connect(micGain);
+    micGain.connect(micAn);
+    micGain.connect(dest);
+  }
+  const sys = screenStream && screenStream.getAudioTracks()[0];
+  if (sys) {
+    const sysGain = c.createGain();
+    sysGain.gain.value = 1;
+    sysAn = makeAnalyser();
+    c.createMediaStreamSource(new MediaStream([sys])).connect(sysGain);
+    sysGain.connect(sysAn);
+    sysGain.connect(dest);
+    sys.onended = () => { if (sysAnalyser === sysAn) sysAnalyser = null; };
+  }
+  micGainNode = micGain;
+  micAnalyser = micAn;
+  sysAnalyser = sysAn;
+  const mixed = new MediaStream();
+  if (screenStream) screenStream.getVideoTracks().forEach(t => mixed.addTrack(t));
+  dest.stream.getAudioTracks().forEach(t => mixed.addTrack(t));
+  return mixed;
 }
 function setMicGain(v) { if (micGainNode) micGainNode.gain.value = v; }
+function setMicLive(on) {
+  if (micStream) micStream.getAudioTracks().forEach(t => { t.enabled = on; });
+  const sliderId = document.body.classList.contains('role-viewer') ? 'viewMicVol' : 'hostMicVol';
+  const slider = document.getElementById(sliderId);
+  setMicGain(on && slider ? slider.value / 100 : 0);
+}
+function paintEq(analyser, el) {
+  if (!el) return;
+  const bars = el._bars || (el._bars = el.querySelectorAll('.eq i'));
+  if (!analyser) {
+    el.classList.remove('hot');
+    bars.forEach(bar => { bar.style.transform = 'scaleY(.12)'; bar.style.background = '#3a4558'; });
+    return;
+  }
+  analyser.getByteFrequencyData(freqScratch);
+  const n = bars.length;
+  const usable = analyser.frequencyBinCount;
+  let peak = 0;
+  for (let i = 0; i < n; i++) {
+    const from = Math.floor(i * usable / n);
+    const to = Math.max(from + 1, Math.floor((i + 1) * usable / n));
+    let m = 0;
+    for (let j = from; j < to && j < freqScratch.length; j++) if (freqScratch[j] > m) m = freqScratch[j];
+    if (m > peak) peak = m;
+    const h = Math.max(0.12, Math.min(1, (m / 255) * 2.4));
+    bars[i].style.transform = 'scaleY(' + h.toFixed(3) + ')';
+    bars[i].style.background = m > 18 ? '#3dd68c' : '#3a4558';
+  }
+  el.classList.toggle('hot', peak > 18);
+}
+function meterLoop() {
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  if (document.body.classList.contains('watching')) {
+    paintEq(micAnalyser, document.getElementById('meterMic'));
+    paintEq(sysAnalyser, document.getElementById('meterSys'));
+    const sharing = document.body.classList.contains('sharing') || document.body.classList.contains('role-viewer');
+    const micEl = document.getElementById('meterMic');
+    const sysEl = document.getElementById('meterSys');
+    if (micEl) micEl.classList.toggle('missing', sharing && !micAnalyser);
+    if (sysEl) sysEl.classList.toggle('missing', document.body.classList.contains('sharing') && !sysAnalyser);
+  }
+  requestAnimationFrame(meterLoop);
+}
+function clearAudioGraph() {
+  if (outboundStream) outboundStream.getAudioTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+  micAnalyser = null;
+  sysAnalyser = null;
+  micGainNode = null;
+  outboundStream = null;
+}
+function unlockAudio() {
+  try { ensureCtx(); } catch (e) {}
+  document.querySelectorAll('audio.broadcast-audio,audio.viewer-voice').forEach(a => a.play().catch(() => {}));
+}
+document.addEventListener('pointerdown', unlockAudio);
+function stopIncomingAudio() {
+  incomingAudio.forEach(a => { a.pause(); a.srcObject = null; a.remove(); });
+  incomingAudio.length = 0;
+}
+function attachIncomingAudio(track) {
+  if (!track || incomingAudio.some(a => a.srcObject && a.srcObject.getTracks().includes(track))) return;
+  const audio = document.createElement('audio');
+  audio.className = 'broadcast-audio';
+  audio.autoplay = true;
+  audio.srcObject = new MediaStream([track]);
+  const slider = document.getElementById('viewInVol');
+  const v = viewInMuted ? 0 : ((slider ? slider.value : 100) / 100);
+  audio.volume = v;
+  audio.muted = v === 0;
+  document.body.appendChild(audio);
+  incomingAudio.push(audio);
+  audio.play().catch(() => armHear());
+}
+function armHear() {
+  const btn = document.getElementById('tapPlay');
+  btn.textContent = 'Включить звук';
+  btn.style.display = 'block';
+  btn.onclick = () => {
+    unlockAudio();
+    btn.style.display = 'none';
+    btn.textContent = 'Смотреть';
+  };
+}
+
+document.querySelectorAll('#airMeters .eq').forEach(eq => {
+  if (!eq.childElementCount) eq.innerHTML = '<i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>';
+});
+requestAnimationFrame(meterLoop);
 
 function setHostInVol(v) {
   v = Math.max(0, Math.min(1, v));
@@ -747,25 +898,18 @@ document.getElementById('hostInMute').onclick = () => {
 };
 document.getElementById('hostMicVol').oninput = e => {
   document.getElementById('hostMicVolVal').textContent = e.target.value + '%';
-  setMicGain(e.target.value / 100);
+  if (!hostMicMuted) setMicGain(e.target.value / 100);
 };
 document.getElementById('hostMicMute').onclick = () => {
   hostMicMuted = !hostMicMuted;
-  [micStream, micProcessed].forEach(s => s && s.getAudioTracks().forEach(t => { t.enabled = !hostMicMuted; }));
-  peers.forEach(p => p.pc.getSenders().forEach(s => {
-    if (s.track && s.track.kind === 'audio' && s.track.id !== (displayStream && displayStream.getAudioTracks()[0] && displayStream.getAudioTracks()[0].id)) {
-      if (micProcessed && micProcessed.getAudioTracks().some(t => t.id === s.track.id)) s.track.enabled = !hostMicMuted;
-    }
-  }));
+  setMicLive(!hostMicMuted);
   document.getElementById('hostMicMute').textContent = hostMicMuted ? '🔇' : '🎤';
   document.getElementById('hostMicMute').classList.toggle('off', hostMicMuted);
 };
 
 function setViewInVol(v) {
   v = Math.max(0, Math.min(1, v));
-  videos.forEach(el => {
-    if (el.classList.contains('on')) { el.volume = v; el.muted = v === 0; }
-  });
+  document.querySelectorAll('audio.broadcast-audio').forEach(el => { el.volume = v; el.muted = v === 0; });
   document.getElementById('viewInVol').value = Math.round(v * 100);
   document.getElementById('viewInVolVal').textContent = Math.round(v * 100) + '%';
   if (v > 0) {
@@ -790,11 +934,11 @@ document.getElementById('viewInMute').onclick = () => {
 };
 document.getElementById('viewMicVol').oninput = e => {
   document.getElementById('viewMicVolVal').textContent = e.target.value + '%';
-  setMicGain(e.target.value / 100);
+  if (!viewMicMuted) setMicGain(e.target.value / 100);
 };
 document.getElementById('viewMicMute').onclick = () => {
   viewMicMuted = !viewMicMuted;
-  [micStream, micProcessed].forEach(s => s && s.getAudioTracks().forEach(t => { t.enabled = !viewMicMuted; }));
+  setMicLive(!viewMicMuted);
   document.getElementById('viewMicMute').textContent = viewMicMuted ? '🔇' : '🎤';
   document.getElementById('viewMicMute').classList.toggle('off', viewMicMuted);
 };
@@ -840,18 +984,24 @@ function updateViewerCount() {
 
 async function captureScreen() {
   const video = { frameRate: { ideal: 30, max: 30 }, width: { ideal: 1920 }, height: { ideal: 1080 } };
+  const audio = { echoCancellation: false, noiseSuppression: false, autoGainControl: false, suppressLocalAudioPlayback: false };
   try {
-    return await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
+    return await navigator.mediaDevices.getDisplayMedia({ video, audio });
   } catch (e) {
-    if (e && e.name === 'NotAllowedError') throw e;
-    return await navigator.mediaDevices.getDisplayMedia({ video, audio: false });
+    if (e && (e.name === 'NotAllowedError' || e.name === 'AbortError')) throw e;
+    try {
+      return await navigator.mediaDevices.getDisplayMedia({ video, audio: true });
+    } catch (e2) {
+      if (e2 && (e2.name === 'NotAllowedError' || e2.name === 'AbortError')) throw e2;
+      return await navigator.mediaDevices.getDisplayMedia({ video, audio: false });
+    }
   }
 }
 
 function resetPeers() {
   peers.forEach(p => {
     try { p.pc.close(); } catch (e) {}
-    if (p.audio) { p.audio.pause(); p.audio.srcObject = null; }
+    if (p.audio) { p.audio.pause(); p.audio.srcObject = null; p.audio.remove(); }
   });
   peers.clear();
   updateViewerCount();
@@ -884,9 +1034,12 @@ document.getElementById('startShare').onclick = async () => {
     if (document.getElementById('hostMic').checked) {
       try {
         micStream = await navigator.mediaDevices.getUserMedia(MIC);
-        micProcessed = processMic(micStream, document.getElementById('hostMicVol').value / 100);
-      } catch (e) { console.warn(e); }
+      } catch (e) { console.warn(e); micStream = null; }
     }
+    const micGainValue = hostMicMuted ? 0 : (document.getElementById('hostMicVol').value / 100);
+    outboundStream = buildHostMix(displayStream, micStream, micGainValue);
+    const sysEl = document.getElementById('meterSys');
+    if (sysEl) sysEl.title = sysAnalyser ? 'Компьютер — звук в эфир' : 'Звук компьютера не захвачен. При показе экрана включите «Поделиться звуком»';
     localVideo.style.display = 'block';
     localVideo.muted = true;
     localVideo.srcObject = displayStream;
@@ -899,7 +1052,8 @@ document.getElementById('startShare').onclick = async () => {
     document.body.classList.add('sharing');
     document.getElementById('startShare').classList.add('hidden');
     document.getElementById('stopShare').classList.remove('hidden');
-    st.textContent = 'Трансляция идёт'; st.className = 'status ok';
+    st.textContent = sysAnalyser ? 'Трансляция идёт' : 'Трансляция идёт. Звук компьютера не захвачен — в окне захвата включите звук';
+    st.className = 'status ok';
     playJoin();
     updateViewerCount();
     startHostPoll();
@@ -908,7 +1062,11 @@ document.getElementById('startShare').onclick = async () => {
     st.className = 'status err';
     ignoreEnded = true;
     if (displayStream) displayStream.getTracks().forEach(t => t.stop());
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
     displayStream = null;
+    micStream = null;
+    micProcessed = null;
+    clearAudioGraph();
     ignoreEnded = false;
   }
 };
@@ -946,7 +1104,7 @@ function dropPeer(vid) {
   const p = peers.get(vid);
   if (!p) return;
   try { p.pc.close(); } catch (e) {}
-  if (p.audio) { p.audio.pause(); p.audio.srcObject = null; }
+  if (p.audio) { p.audio.pause(); p.audio.srcObject = null; p.audio.remove(); }
   peers.delete(vid);
   updateViewerCount();
 }
@@ -970,10 +1128,15 @@ async function createOfferForViewer(vid) {
   };
   pc.ontrack = ev => {
     if (ev.track.kind !== 'audio') return;
-    if (!entry.audio) entry.audio = new Audio();
-    entry.audio.srcObject = ev.streams && ev.streams[0] ? ev.streams[0] : new MediaStream([ev.track]);
+    if (!entry.audio) {
+      entry.audio = new Audio();
+      entry.audio.className = 'viewer-voice';
+      entry.audio.autoplay = true;
+      document.body.appendChild(entry.audio);
+    }
+    entry.audio.srcObject = new MediaStream([ev.track]);
     entry.audio.volume = hostInMuted ? 0 : document.getElementById('hostInVol').value / 100;
-    entry.audio.play().catch(() => {});
+    entry.audio.play().catch(() => armHear());
   };
   pc.onconnectionstatechange = () => {
     if (pc.connectionState === 'connected') {
@@ -985,9 +1148,9 @@ async function createOfferForViewer(vid) {
     if (pc.connectionState === 'failed' || pc.connectionState === 'closed') dropPeer(vid);
   };
   try {
-    displayStream.getTracks().forEach(t => pc.addTrack(t, displayStream));
-    const micOut = micProcessed || micStream;
-    if (micOut) micOut.getAudioTracks().forEach(t => { t.enabled = !hostMicMuted; pc.addTrack(t, micOut); });
+    const sendStream = outboundStream || displayStream;
+    sendStream.getTracks().forEach(t => pc.addTrack(t, sendStream));
+    if (!sendStream.getAudioTracks().length) pc.addTransceiver('audio', { direction: 'sendrecv' });
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
     const initial = bucket.splice(0, bucket.length);
@@ -1034,7 +1197,8 @@ async function releaseBecauseStale() {
   ignoreEnded = true;
   if (displayStream) displayStream.getTracks().forEach(t => t.stop());
   if (micStream) micStream.getTracks().forEach(t => t.stop());
-  displayStream = null; micStream = null; micProcessed = null; micGainNode = null;
+  displayStream = null; micStream = null; micProcessed = null;
+  clearAudioGraph();
   ignoreEnded = false;
   localVideo.srcObject = null; localVideo.style.display = 'none';
   document.getElementById('startShare').classList.remove('hidden');
@@ -1053,7 +1217,8 @@ async function stopShare(notify) {
   ignoreEnded = true;
   if (displayStream) displayStream.getTracks().forEach(t => t.stop());
   if (micStream) micStream.getTracks().forEach(t => t.stop());
-  displayStream = null; micStream = null; micProcessed = null; micGainNode = null;
+  displayStream = null; micStream = null; micProcessed = null;
+  clearAudioGraph();
   ignoreEnded = false;
   localVideo.srcObject = null; localVideo.style.display = 'none';
   document.getElementById('startShare').classList.remove('hidden');
@@ -1176,6 +1341,7 @@ function requestReset(msg) {
   connectGen++;
   appliedOfferId = '';
   remoteReady = false;
+  stopIncomingAudio();
   if (viewerId && room) signal('viewer_poll', { room, viewer: viewerId, reset: '1' }).catch(() => {});
   if (viewerPc) { try { viewerPc.close(); } catch (e) {} viewerPc = null; }
 }
@@ -1223,14 +1389,13 @@ function looksBlack(video) {
 }
 function armTap(video) {
   const btn = document.getElementById('tapPlay');
+  btn.textContent = 'Смотреть';
   btn.style.display = 'block';
   btn.onclick = async () => {
     video.muted = true;
     try { await video.play(); } catch (e) {}
+    unlockAudio();
     btn.style.display = 'none';
-    const v = viewInMuted ? 0 : (document.getElementById('viewInVol').value / 100);
-    video.muted = v === 0;
-    video.volume = v || 1;
   };
 }
 
@@ -1243,6 +1408,7 @@ async function connectAsViewer(offer) {
   answerBucket.length = 0;
   if (activeVideo() && activeVideo().videoWidth) parkLastFrame();
   if (viewerPc) { try { viewerPc.close(); } catch (e) {} viewerPc = null; }
+  stopIncomingAudio();
   if (!holdCanvas.classList.contains('show')) enterWait('Собираем картинку…', 'Экран хоста уже в пути');
   const pc = new RTCPeerConnection(ICE);
   viewerPc = pc;
@@ -1259,7 +1425,9 @@ async function connectAsViewer(offer) {
     if (pc.connectionState === 'failed') requestReset('Соединение оборвалось. Подключаемся снова…');
   };
   pc.ontrack = ev => {
-    if (ev.track.kind !== 'video' || pc !== viewerPc) return;
+    if (pc !== viewerPc) return;
+    if (ev.track.kind === 'audio') { attachIncomingAudio(ev.track); return; }
+    if (ev.track.kind !== 'video') return;
     const stream = (ev.streams && ev.streams[0]) ? ev.streams[0] : new MediaStream([ev.track]);
     ev.track.onunmute = () => { if (pc === viewerPc) revealStream(stream, gen); };
     revealStream(stream, gen);
@@ -1269,12 +1437,14 @@ async function connectAsViewer(offer) {
     remoteReady = true;
     await addHostCandidates(offer.candidates || []);
     const micOut = micProcessed || micStream;
-    if (micOut && pc.signalingState !== 'closed') {
-      micOut.getAudioTracks().forEach(t => {
-        t.enabled = !viewMicMuted;
-        const already = pc.getSenders().some(s => s.track === t);
-        if (!already) pc.addTrack(t, micOut);
-      });
+    const micTrack = micOut && micOut.getAudioTracks()[0];
+    if (micTrack && pc.signalingState !== 'closed') {
+      micTrack.enabled = !viewMicMuted;
+      const slot = pc.getTransceivers().find(t => t.receiver && t.receiver.track && t.receiver.track.kind === 'audio');
+      if (slot) {
+        try { if (slot.direction === 'recvonly') slot.direction = 'sendrecv'; } catch (e) {}
+        await slot.sender.replaceTrack(micTrack);
+      } else pc.addTrack(micTrack, micOut);
     }
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -1342,10 +1512,9 @@ async function revealStream(stream, gen) {
   document.getElementById('tapPlay').style.display = 'none';
   volumeBar.classList.add('show');
   startControlsAutoHide();
-  const vol = viewInMuted ? 0 : (document.getElementById('viewInVol').value / 100);
-  next.volume = vol || 1;
-  next.muted = vol === 0;
-  if (next.paused) { next.muted = true; next.play().then(() => { if (vol > 0) next.muted = false; }).catch(() => armTap(next)); }
+  next.muted = true;
+  if (next.paused) next.play().catch(() => armTap(next));
+  unlockAudio();
   setTimeout(() => {
     if (videos[videoSlot] === next) holdCanvas.classList.remove('show');
     if (prev.srcObject && prev.srcObject !== stream) prev.srcObject = null;
@@ -1361,8 +1530,10 @@ function leaveRoom() {
   if (viewerId && room) signal('leave', { room, viewer: viewerId }).catch(() => {});
   viewerPc = null; viewerId = null; appliedOfferId = ''; seenEpoch = -1; remoteReady = false;
   if (micStream) micStream.getTracks().forEach(t => t.stop());
-  micStream = null; micProcessed = null; micGainNode = null;
-  videos.forEach(v => { v.srcObject = null; v.classList.remove('on'); });
+  micStream = null; micProcessed = null;
+  clearAudioGraph();
+  stopIncomingAudio();
+  videos.forEach(v => { v.srcObject = null; v.classList.remove('on'); v.muted = true; });
   holdCanvas.classList.remove('show');
   volumeBar.classList.remove('show');
   document.body.classList.remove('cinema', 'waiting', 'controls-on');
