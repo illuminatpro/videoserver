@@ -7,8 +7,9 @@
   <title>Ezomatrix</title>
   <style>
     :root {
-      --bg:#000; --panel:#04150c; --line:#145c32; --text:#d9ffe4;
-      --muted:#7dcea0; --yellow:#39ff6a; --blue:#12c45a; --green:#39ff6a; --danger:#e23d4a;
+      --bg:#1c2433; --panel:#2a3342; --line:#323c4c; --text:#e8eef6;
+      --muted:#9aa6b5; --yellow:#f0b429; --blue:#2f67f6; --green:#3dd68c; --danger:#e23d4a;
+      --hover-edge:rgba(61,214,140,.7);
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#000;color:var(--text);min-height:100vh}
@@ -16,8 +17,8 @@
     button{cursor:pointer;border:none;background:transparent;color:inherit}
     .hidden{display:none!important}
     #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-    body.rooms,body.watching{background:#000}
-    body.watching #bgCanvas{visibility:hidden}
+    body.rooms,body.watching{background:#121820}
+    body.rooms #bgCanvas,body.watching #bgCanvas{visibility:hidden}
     #shell{position:relative;z-index:1;min-height:100vh}
     body.watching #shell{display:none}
 
@@ -43,40 +44,40 @@
     .invite{background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.45);color:#ffe7a8;border-radius:10px;padding:10px 12px;font-size:.85rem;margin-bottom:10px}
     .mic-label{font-size:.85rem;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:8px}
 
-    .rooms-page{min-height:100vh;background:transparent;color:#d9ffe4;padding:18px 28px 48px}
+    .rooms-page{min-height:100vh;background:#1c2433;color:#e8eef6;padding:18px 28px 48px}
     .rooms-top{display:flex;justify-content:space-between;align-items:center}
     .brand{display:flex;align-items:center;gap:10px}
-    .user-pill{display:flex;align-items:center;gap:8px;background:rgba(0,16,8,.78);border:1px solid #145c32;border-radius:999px;padding:4px 6px 4px 14px;color:#d9ffe4;font-size:.92rem}
-    .avatar-btn{width:28px;height:28px;border-radius:50%;background:#0d3d22;color:#b6ffc8;display:grid;place-items:center}
+    .user-pill{display:flex;align-items:center;gap:8px;background:#2a3344;border-radius:999px;padding:4px 6px 4px 14px;color:#d5dde8;font-size:.92rem}
+    .avatar-btn{width:28px;height:28px;border-radius:50%;background:#3a4558;color:#fff;display:grid;place-items:center}
     .rooms-main{max-width:980px;margin:64px auto 0}
     .rooms-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
-    .rooms-toolbar h2{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:16px;font-weight:650;color:#8dffb0;letter-spacing:.08em}
+    .rooms-toolbar h2{font-size:16px;font-weight:650;color:#dfe6f0}
     .toolbar-actions{display:flex;gap:8px;align-items:center}
-    .btn-dark,.btn-icon,.btn-ghost{background:#0d3d22;color:#d9ffe4;border:1px solid #1f8f45;border-radius:8px;padding:8px 14px;font-size:14px;font-weight:600}
-    .btn-ghost{background:transparent}
+    .btn-dark,.btn-icon,.btn-ghost{background:#3c4658;color:#fff;border-radius:8px;padding:8px 14px;font-size:14px;font-weight:600}
+    .btn-ghost{background:transparent;border:1px solid #3c4658}
     .btn-icon{width:36px;padding:0;height:36px;font-size:18px}
-    .room-list{border:1px solid #145c32;border-radius:4px;overflow:hidden;background:rgba(0,12,6,.72);backdrop-filter:blur(8px)}
-    .room-row{width:100%;display:flex;align-items:center;gap:14px;padding:13px 16px;color:#d9ffe4;border-bottom:1px solid #145c32;text-align:left;font-size:15px;background:transparent}
+    .room-list{border:1px solid #323c4c;border-radius:4px;overflow:hidden;background:#2a3342}
+    .room-row{width:100%;display:flex;align-items:center;gap:14px;padding:13px 16px;color:#e8eef6;border-bottom:1px solid #323c4c;text-align:left;font-size:15px;background:transparent}
     .room-row:last-child{border-bottom:none}
-    .room-row:hover{background:rgba(18,196,90,.12)}
-    .grip{color:#39ff6a;width:18px}
+    .room-row:hover{background:#323c4e}
+    .grip{color:#8b97a8;width:18px}
     .room-name{flex:1;display:flex;flex-direction:column;gap:2px}
-    .room-name small{color:#7dcea0;font-size:12px;letter-spacing:.06em}
+    .room-name small{color:#9aa6b5;font-size:12px;letter-spacing:.04em}
     .avatar-stack{display:flex;align-items:center}
-    .av{width:28px;height:28px;border-radius:50%;background:#0d3d22;color:#b6ffc8;display:grid;place-items:center;font-size:12px;font-weight:700;border:2px solid #04150c}
+    .av{width:28px;height:28px;border-radius:50%;background:#8b939e;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;border:2px solid #2a3342}
     .avatar-stack .av + .av{margin-left:-8px}
-    .chev{color:#39ff6a;font-size:22px;line-height:1}
-    .rooms-empty{margin-top:8px;padding:16px;color:#b7ebc6;font-size:.95rem;background:rgba(0,12,6,.72);border:1px solid #145c32}
+    .chev{color:#9aa6b5;font-size:22px;line-height:1}
+    .rooms-empty{padding:22px 8px;color:#9aa6b5;font-size:.95rem}
 
     #watchPage{display:none}
-    body.watching #watchPage{display:flex;flex-direction:column;position:fixed;inset:0;z-index:20;background:#000;color:#d9ffe4}
-    .watch-top{height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;background:#010804;border-bottom:1px solid #145c32;flex:0 0 auto}
-    .share-bar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#010804;border-bottom:1px solid #145c32;flex:0 0 auto}
-    #watchLink{flex:1;margin:0;background:#000;color:#8dffb0;border:1px solid #145c32;border-radius:8px;padding:8px 10px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
-    #copyWatchLink{width:auto;background:#12c45a;color:#04140a;font-weight:800;border-radius:8px;padding:8px 14px;white-space:nowrap}
+    body.watching #watchPage{display:flex;flex-direction:column;position:fixed;inset:0;z-index:20;background:#0e1218;color:#e8eef6}
+    .watch-top{height:56px;display:flex;align-items:center;gap:12px;padding:0 12px;background:#12171f;border-bottom:1px solid #222a36;flex:0 0 auto}
+    .share-bar{display:flex;gap:8px;align-items:center;padding:8px 12px;background:#12171f;border-bottom:1px solid #222a36;flex:0 0 auto}
+    #watchLink{flex:1;margin:0;background:#0e141c;color:#e8eef6;border:1px solid #323c4c;border-radius:8px;padding:8px 10px;font-size:13px}
+    #copyWatchLink{width:auto;background:#3c4658;color:#fff;border-radius:8px;padding:8px 14px;white-space:nowrap}
     .watch-brand{display:flex;align-items:center;gap:8px;min-width:0}
-    #roomTitle{background:transparent;border:none;color:#d9ffe4;font-size:15px;font-weight:650;width:min(220px,28vw);padding:4px 6px;margin:0;border-radius:6px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-    #roomTitle:focus{background:#04150c;outline:1px solid #1f8f45}
+    #roomTitle{background:transparent;border:none;color:#fff;font-size:15px;font-weight:650;width:min(220px,28vw);padding:4px 6px;margin:0;border-radius:6px}
+    #roomTitle:focus{background:#1c2433}
     #roomTitle[readonly]{cursor:default}
     .room-code{color:#8b97a8;font-size:12px;letter-spacing:.08em}
     .watch-center{flex:1;display:flex;justify-content:center;align-items:center;min-width:0}
@@ -85,7 +86,7 @@
     #pill.show{display:block}
     .watch-actions{display:flex;align-items:center;gap:10px}
     .count-badge{min-width:1.2em;text-align:right;font-weight:700}
-    .btn-invite{background:#12c45a;color:#04140a;font-weight:800;border-radius:8px;padding:8px 14px}
+    .btn-invite{background:var(--yellow);color:#1a1400;font-weight:800;border-radius:8px;padding:8px 14px}
     .watch-body{flex:1;display:flex;min-height:0}
     .player{position:relative;flex:1;background:#000;min-width:0;min-height:0}
     .player video,#holdCanvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
@@ -105,10 +106,9 @@
     #peopleBar{display:flex;gap:8px;overflow:auto;padding-bottom:8px}
     .person{min-width:78px;background:rgba(16,22,32,.72);border-radius:8px;padding:6px 6px 8px;text-align:center}
     .person .av{margin:0 auto 4px;width:36px;height:36px;font-size:14px;border-color:transparent}
-    .person .name{display:block;font-size:11px;color:#7dcea0;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .person.online{box-shadow:0 0 0 1px #1f8f45,0 0 12px rgba(57,255,106,.35)}
-    .person.online .name{color:#39ff6a;font-weight:700}
-    .person.online .av{box-shadow:0 0 0 2px #39ff6a}
+    .person .name{display:block;font-size:11px;color:#d5dde8;max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .person.online .name{color:#3dd68c;font-weight:700}
+    .person.online .av{box-shadow:0 0 0 2px #3dd68c}
     #volumeBar{position:static;transform:none;opacity:1;display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;background:transparent;border:none;padding:0;min-width:0;pointer-events:auto}
     .ctrl{display:flex;align-items:center;gap:6px}
     .ctrl label{font-size:12px;color:#c5ceda;min-width:0}
@@ -117,53 +117,66 @@
     .icon-btn,.row-btns button{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.1);color:#fff;padding:0}
     .icon-btn.off{opacity:.45}
     .row-btns{display:flex;gap:8px;align-items:center;margin-left:auto}
-    #startShare{width:auto;background:#12c45a;color:#04140a;font-weight:800;border-radius:8px;padding:8px 12px;height:36px}
+    #startShare{width:auto;background:var(--yellow);color:#1a1400;font-weight:800;border-radius:8px;padding:8px 12px;height:36px}
     #stopShare{width:auto;background:var(--danger);color:#fff;font-weight:700;border-radius:8px;padding:8px 12px;height:36px}
     #exitBtn{position:static;width:auto;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:8px 12px;height:36px}
-    #volHint{display:none;position:absolute;z-index:5;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(141,255,176,.55);font-size:12px;letter-spacing:.04em;pointer-events:none}
+    #volHint{display:none;position:absolute;z-index:5;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(232,238,246,.45);font-size:12px;pointer-events:none}
     body.watching:not(.controls-on) #volHint{display:block}
     .host-only,.viewer-only{display:none}
     body.role-host .host-only{display:flex}
     body.role-viewer .viewer-only{display:flex}
-    .side{width:340px;background:#010804;border-left:1px solid #145c32;display:flex;flex-direction:column;min-height:0}
-    .side-tabs{display:flex;gap:18px;padding:0 16px;border-bottom:1px solid #145c32}
-    .side-tab{color:#7dcea0;padding:14px 0 10px;border-bottom:3px solid transparent;font-weight:650;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
-    .side-tab.active{color:#d9ffe4;border-bottom-color:#39ff6a}
+    .side{width:340px;background:#141a22;border-left:1px solid #222a36;display:flex;flex-direction:column;min-height:0}
+    .side-tabs{display:flex;gap:18px;padding:0 16px;border-bottom:1px solid #222a36}
+    .side-tab{color:#9aa6b5;padding:14px 0 10px;border-bottom:3px solid transparent;font-weight:650}
+    .side-tab.active{color:#fff;border-bottom-color:var(--yellow)}
     .side-panel{flex:1;min-height:0;display:flex;flex-direction:column}
     .side-note{color:#9aa6b5;padding:16px;line-height:1.45;font-size:.92rem}
     #chatLog,#histLog{flex:1;overflow:auto;padding:12px 14px}
     .chat-line{margin:0 0 12px;font-size:14px;line-height:1.35}
-    .chat-line b{display:block;color:#8dffb0;font-weight:650;font-size:13px}
-    .chat-line.online b{color:#39ff6a}
+    .chat-line b{display:block;color:#f0d48a;font-weight:650;font-size:13px}
+    .chat-line.online b{color:#3dd68c}
     .chat-line time{color:#7f8b9c;font-size:11px;margin-left:6px;font-weight:500}
     .hist-line{color:#c5ceda;font-size:13px;margin:0 0 10px}
-    #chatForm{display:flex;gap:8px;padding:10px;border-top:1px solid #145c32}
-    #chatForm input{flex:1;margin:0;background:#000;border:1px solid #145c32;color:#d9ffe4;border-radius:8px;padding:10px 12px}
-    #chatForm button{width:42px;height:42px;border-radius:10px;background:#12c45a;color:#04140a;font-size:18px}
+    #chatForm{display:flex;gap:8px;padding:10px;border-top:1px solid #222a36}
+    #chatForm input{flex:1;margin:0;background:#0e141c;border:1px solid #2c3644;color:#fff;border-radius:8px;padding:10px 12px}
+    #chatForm button{width:42px;height:42px;border-radius:10px;background:var(--blue);color:#fff;font-size:18px}
 
     .modal{position:fixed;inset:0;z-index:40;background:rgba(6,10,16,.55);display:flex;align-items:center;justify-content:center;padding:18px}
-    .modal-card{width:min(560px,100%);background:#04140c;border:1px solid #1f8f45;border-radius:10px;padding:22px 22px 16px;color:#d9ffe4;box-shadow:0 0 40px rgba(18,196,90,.18)}
+    .modal-card{width:min(560px,100%);background:#2c3544;border-radius:10px;padding:22px 22px 16px;color:#fff}
     .invite-card{width:min(680px,100%)}
-    .modal-card h2{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:20px;font-weight:750;margin-bottom:14px;color:#8dffb0}
+    .modal-card h2{font-size:22px;font-weight:750;margin-bottom:14px}
     .invite-tabs{display:flex;gap:18px;border-bottom:1px solid #445066;overflow:auto}
     .inv-tab{color:#c5ced8;padding:10px 0;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap;font-size:14px}
-    .inv-tab.active{color:#d9ffe4;border-bottom-color:#39ff6a}
+    .inv-tab.active{color:#fff;border-bottom-color:var(--yellow)}
     .inv-panel{margin-top:14px}
     .inv-panel p{margin-bottom:8px}
     .copy-row{display:flex}
-    .copy-row input,#embedCode{margin:0;background:#000;color:#8dffb0;border:1px solid #145c32;border-radius:4px 0 0 4px;padding:11px 12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    .copy-row input,#embedCode{margin:0;background:#fff;color:#1c2430;border:none;border-radius:4px 0 0 4px;padding:11px 12px}
     #embedCode{width:100%;min-height:88px;border-radius:4px;resize:vertical}
-    #copyLink,#copyEmbed{width:auto;background:#12c45a;color:#04140a;font-weight:800;border-radius:0 4px 4px 0;padding:0 18px}
+    #copyLink,#copyEmbed{width:auto;background:var(--blue);color:#fff;font-weight:750;border-radius:0 4px 4px 0;padding:0 18px}
     #copyEmbed{margin-top:8px;border-radius:4px;padding:10px 16px}
     .social-grid{display:flex;flex-wrap:wrap;gap:8px}
     .social-grid a{background:#3c4658;color:#fff;text-decoration:none;border-radius:8px;padding:10px 14px;font-weight:650}
     #qrCanvas{display:block;background:#fff;margin:8px auto;image-rendering:pixelated}
-    .info-box{margin-top:18px;background:#062616;border:1px solid #145c32;border-radius:8px;padding:14px;display:flex;gap:12px;align-items:flex-start;color:#b7ebc6;font-size:14px;line-height:1.45}
+    .info-box{margin-top:18px;background:#343e4e;border-radius:8px;padding:14px;display:flex;gap:12px;align-items:flex-start;color:#d5dde6;font-size:14px;line-height:1.45}
     .info-ico{width:36px;height:36px;border-radius:50%;background:#4a5568;display:grid;place-items:center;flex:0 0 auto}
     .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-    #closeInvite,#backHome2{background:#0d3d22;color:#d9ffe4;border:1px solid #1f8f45;border-radius:8px;padding:8px 16px}
-    #joinBtn{width:auto;margin:0;background:#12c45a;color:#04140a;border-radius:8px;padding:10px 16px}
+    #closeInvite,#backHome2{background:#4a5568;color:#fff;border-radius:8px;padding:8px 16px}
+    #joinBtn{width:auto;margin:0;background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px}
     #viewer input{background:#0e141c;border:1px solid #445066;color:#fff}
+
+    .btn,.btn-out,.tabs button,.btn-dark,.btn-ghost,.btn-icon,.btn-invite,.avatar-btn,
+    #copyWatchLink,#startShare,#stopShare,#exitBtn,.icon-btn,.row-btns button,#chatForm button,
+    .social-grid a,#copyLink,#copyEmbed,#closeInvite,#backHome2,#joinBtn,.room-row{
+      transition:box-shadow .15s ease,background-color .15s ease;
+    }
+    .btn:hover,.btn-out:hover,.tabs button:hover,.btn-dark:hover,.btn-ghost:hover,.btn-icon:hover,
+    .btn-invite:hover,.avatar-btn:hover,#copyWatchLink:hover,#startShare:hover,#stopShare:hover,
+    #exitBtn:hover,.icon-btn:hover,.row-btns button:hover,#chatForm button:hover,.social-grid a:hover,
+    #copyLink:hover,#copyEmbed:hover,#closeInvite:hover,#backHome2:hover,#joinBtn:hover{
+      box-shadow:inset 0 0 0 1px var(--hover-edge),0 0 0 1px rgba(61,214,140,.18);
+    }
+    .room-row:hover{box-shadow:inset 3px 0 0 var(--green)}
 
     @media (max-width:900px){
       .rooms-page{padding:14px}
@@ -187,7 +200,7 @@
       <div class="auth-card">
         <div class="brand-lockup">
           <span class="logo-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="7" fill="#12c45a"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
+            <svg viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="7" fill="#f0b429"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
           </span>
           <div>
             <h1>Ezomatrix</h1>
@@ -223,7 +236,7 @@
       <header class="rooms-top">
         <div class="brand">
           <span class="logo-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="7" fill="#12c45a"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
+            <svg viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="7" fill="#f0b429"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
           </span>
           <span class="brand-name"><b>Ezo</b>matrix</span>
         </div>
@@ -253,7 +266,7 @@
     <header class="watch-top">
       <div class="watch-brand">
         <span class="logo-mark" aria-hidden="true">
-          <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="7" fill="#12c45a"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
+          <svg viewBox="0 0 32 32" width="28" height="28"><rect width="32" height="32" rx="7" fill="#f0b429"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
         </span>
         <input id="roomTitle" type="text" maxlength="64" value="Комната" aria-label="Название комнаты" />
         <span id="roomCode" class="room-code"></span>
@@ -1951,7 +1964,7 @@ function bootCanvases() {
   function drawBg(now) {
     const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
     last = now;
-    if (document.hidden || document.body.classList.contains('watching')) return;
+    if (document.hidden || document.body.classList.contains('watching') || document.body.classList.contains('rooms')) return;
     const { w, h } = fit(bg, bgx);
     const font = layout(w, h);
     bgx.fillStyle = '#000';
