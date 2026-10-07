@@ -122,10 +122,9 @@
     #exitBtn{position:static;width:auto;background:rgba(255,255,255,.12);color:#fff;border-radius:8px;padding:8px 12px;height:36px}
     #volHint{display:none;position:absolute;z-index:5;bottom:16px;left:50%;transform:translateX(-50%);color:rgba(232,238,246,.45);font-size:12px;pointer-events:none}
     body.watching:not(.controls-on) #volHint{display:block}
-    .air-meters{position:absolute;z-index:7;left:14px;top:14px;display:flex;gap:8px;pointer-events:none}
-    .air-meter{display:flex;flex-direction:column;gap:4px;min-width:92px;background:rgba(16,22,32,.82);border:1px solid #323c4c;border-radius:8px;padding:6px 8px 7px}
-    .air-meter.hot{border-color:rgba(61,214,140,.75)}
-    .air-meter.missing{opacity:.5}
+    .air-meters{display:flex;gap:6px;align-items:stretch;pointer-events:none;flex:0 0 auto}
+    .air-meter{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:76px;background:rgba(16,22,32,.55);border:1px solid rgba(61,214,140,.82);border-radius:8px;padding:4px 8px;box-shadow:0 0 8px rgba(61,214,140,.28)}
+    .air-meter.missing{opacity:.5;border-color:#323c4c;box-shadow:none}
     .air-name{font-size:11px;color:#c5ceda;line-height:1}
     .eq{display:flex;align-items:flex-end;gap:2px;height:16px}
     .eq i{flex:1;height:100%;border-radius:1px;background:#3a4558;transform:scaleY(.12);transform-origin:center bottom}
@@ -134,17 +133,13 @@
     body.role-host .host-only{display:flex}
     body.role-viewer .viewer-only{display:flex}
     .side{width:340px;background:#141a22;border-left:1px solid #222a36;display:flex;flex-direction:column;min-height:0}
-    .side-tabs{display:flex;gap:18px;padding:0 16px;border-bottom:1px solid #222a36}
-    .side-tab{color:#9aa6b5;padding:14px 0 10px;border-bottom:3px solid transparent;font-weight:650}
-    .side-tab.active{color:#fff;border-bottom-color:var(--yellow)}
+    .side-head{padding:14px 16px 10px;border-bottom:1px solid #222a36;font-weight:650;color:#fff}
     .side-panel{flex:1;min-height:0;display:flex;flex-direction:column}
-    .side-note{color:#9aa6b5;padding:16px;line-height:1.45;font-size:.92rem}
-    #chatLog,#histLog{flex:1;overflow:auto;padding:12px 14px}
+    #chatLog{flex:1;overflow:auto;padding:12px 14px}
     .chat-line{margin:0 0 12px;font-size:14px;line-height:1.35}
     .chat-line b{display:block;color:#f0d48a;font-weight:650;font-size:13px}
     .chat-line.online b{color:#3dd68c}
     .chat-line time{color:#7f8b9c;font-size:11px;margin-left:6px;font-weight:500}
-    .hist-line{color:#c5ceda;font-size:13px;margin:0 0 10px}
     #chatForm{display:flex;gap:8px;padding:10px;border-top:1px solid #222a36}
     #chatForm input{flex:1;margin:0;background:#0e141c;border:1px solid #2c3644;color:#fff;border-radius:8px;padding:10px 12px}
     #chatForm button{width:42px;height:42px;border-radius:10px;background:var(--blue);color:#fff;font-size:18px}
@@ -153,19 +148,11 @@
     .modal-card{width:min(560px,100%);background:#2c3544;border-radius:10px;padding:22px 22px 16px;color:#fff}
     .invite-card{width:min(680px,100%)}
     .modal-card h2{font-size:22px;font-weight:750;margin-bottom:14px}
-    .invite-tabs{display:flex;gap:18px;border-bottom:1px solid #445066;overflow:auto}
-    .inv-tab{color:#c5ced8;padding:10px 0;border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap;font-size:14px}
-    .inv-tab.active{color:#fff;border-bottom-color:var(--yellow)}
-    .inv-panel{margin-top:14px}
+    .inv-panel{margin-top:4px}
     .inv-panel p{margin-bottom:8px}
     .copy-row{display:flex}
-    .copy-row input,#embedCode{margin:0;background:#fff;color:#1c2430;border:none;border-radius:4px 0 0 4px;padding:11px 12px}
-    #embedCode{width:100%;min-height:88px;border-radius:4px;resize:vertical}
-    #copyLink,#copyEmbed{width:auto;background:var(--blue);color:#fff;font-weight:750;border-radius:0 4px 4px 0;padding:0 18px}
-    #copyEmbed{margin-top:8px;border-radius:4px;padding:10px 16px}
-    .social-grid{display:flex;flex-wrap:wrap;gap:8px}
-    .social-grid a{background:#3c4658;color:#fff;text-decoration:none;border-radius:8px;padding:10px 14px;font-weight:650}
-    #qrCanvas{display:block;background:#fff;margin:8px auto;image-rendering:pixelated}
+    .copy-row input{margin:0;background:#fff;color:#1c2430;border:none;border-radius:4px 0 0 4px;padding:11px 12px;flex:1}
+    #copyLink{width:auto;background:var(--blue);color:#fff;font-weight:750;border-radius:0 4px 4px 0;padding:0 18px}
     .info-box{margin-top:18px;background:#343e4e;border-radius:8px;padding:14px;display:flex;gap:12px;align-items:flex-start;color:#d5dde6;font-size:14px;line-height:1.45}
     .info-ico{width:36px;height:36px;border-radius:50%;background:#4a5568;display:grid;place-items:center;flex:0 0 auto}
     .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
@@ -175,13 +162,13 @@
 
     .btn,.btn-out,.tabs button,.btn-dark,.btn-ghost,.btn-icon,.btn-invite,.avatar-btn,
     #copyWatchLink,#startShare,#stopShare,#exitBtn,.icon-btn,.row-btns button,#chatForm button,
-    .social-grid a,#copyLink,#copyEmbed,#closeInvite,#backHome2,#joinBtn,.room-row{
+    #copyLink,#closeInvite,#backHome2,#joinBtn,.room-row{
       transition:box-shadow .15s ease,background-color .15s ease;
     }
     .btn:hover,.btn-out:hover,.tabs button:hover,.btn-dark:hover,.btn-ghost:hover,.btn-icon:hover,
     .btn-invite:hover,.avatar-btn:hover,#copyWatchLink:hover,#startShare:hover,#stopShare:hover,
-    #exitBtn:hover,.icon-btn:hover,.row-btns button:hover,#chatForm button:hover,.social-grid a:hover,
-    #copyLink:hover,#copyEmbed:hover,#closeInvite:hover,#backHome2:hover,#joinBtn:hover{
+    #exitBtn:hover,.icon-btn:hover,.row-btns button:hover,#chatForm button:hover,
+    #copyLink:hover,#closeInvite:hover,#backHome2:hover,#joinBtn:hover{
       box-shadow:inset 0 0 0 1px var(--hover-edge),0 0 0 1px rgba(61,214,140,.18);
     }
     .room-row:hover{box-shadow:inset 3px 0 0 var(--green)}
@@ -329,6 +316,16 @@
               <input type="range" id="viewMicVol" min="0" max="200" value="100" />
               <span class="val" id="viewMicVolVal">100%</span>
             </div>
+            <div id="airMeters" class="air-meters">
+              <div class="air-meter" id="meterMic" title="Микрофон — звук в эфир">
+                <span class="air-name">Микрофон</span>
+                <span class="eq" aria-hidden="true"></span>
+              </div>
+              <div class="air-meter host-only" id="meterSys" title="Компьютер — звук в эфир">
+                <span class="air-name">Компьютер</span>
+                <span class="eq" aria-hidden="true"></span>
+              </div>
+            </div>
             <div class="row-btns">
               <label class="mic-label host-only"><input type="checkbox" id="hostMic" checked /> Микрофон</label>
               <button class="host-only" id="startShare" type="button">Показать экран</button>
@@ -342,35 +339,15 @@
           </div>
         </div>
         <div id="volHint">движение мыши — управление</div>
-        <div id="airMeters" class="air-meters">
-          <div class="air-meter" id="meterMic" title="Микрофон — звук в эфир">
-            <span class="air-name">Микрофон</span>
-            <span class="eq" aria-hidden="true"></span>
-          </div>
-          <div class="air-meter host-only" id="meterSys" title="Компьютер — звук в эфир">
-            <span class="air-name">Компьютер</span>
-            <span class="eq" aria-hidden="true"></span>
-          </div>
-        </div>
       </div>
       <aside class="side">
-        <div class="side-tabs">
-          <button class="side-tab active" type="button" data-tab="chat">Chat</button>
-          <button class="side-tab" type="button" data-tab="play">Playlists</button>
-          <button class="side-tab" type="button" data-tab="hist">History</button>
-        </div>
+        <div class="side-head">Чат</div>
         <div id="tabChat" class="side-panel">
           <div id="chatLog"></div>
           <form id="chatForm">
             <input id="chatInput" type="text" maxlength="400" placeholder="Написать сообщение…" autocomplete="off" />
             <button type="submit" title="Отправить">➤</button>
           </form>
-        </div>
-        <div id="tabPlay" class="side-panel hidden">
-          <p class="side-note">Здесь не список роликов. Ezomatrix показывает экран: хост нажимает «Показать экран», и все в комнате видят одну картинку.</p>
-        </div>
-        <div id="tabHist" class="side-panel hidden">
-          <div id="histLog"></div>
         </div>
       </aside>
     </div>
@@ -392,31 +369,12 @@
   <div id="inviteModal" class="modal hidden">
     <div class="modal-card invite-card">
       <h2>Пригласите друзей посмотреть с Вами видео!</h2>
-      <div class="invite-tabs">
-        <button class="inv-tab active" type="button" data-inv="link">Ссылка для приглашения</button>
-        <button class="inv-tab" type="button" data-inv="social">Email / Социальные сети</button>
-        <button class="inv-tab" type="button" data-inv="qr">QR-Code</button>
-        <button class="inv-tab" type="button" data-inv="embed">Embed</button>
-      </div>
       <div id="invLink" class="inv-panel">
         <p>Поделитесь с ними этой ссылкой:</p>
         <div class="copy-row">
           <input id="roomLink" type="text" readonly />
           <button id="copyLink" type="button">Копировать</button>
         </div>
-      </div>
-      <div id="invSocial" class="inv-panel hidden">
-        <p>Отправьте ссылку туда, где уже сидят друзья:</p>
-        <div class="social-grid" id="socialGrid"></div>
-      </div>
-      <div id="invQr" class="inv-panel hidden">
-        <p>Пусть друг наведёт камеру на код.</p>
-        <canvas id="qrCanvas" width="220" height="220"></canvas>
-      </div>
-      <div id="invEmbed" class="inv-panel hidden">
-        <p>Код вставки комнаты на другую страницу:</p>
-        <textarea id="embedCode" readonly></textarea>
-        <button id="copyEmbed" type="button">Копировать код</button>
       </div>
       <div class="info-box">
         <span class="info-ico" aria-hidden="true">👤+</span>
@@ -478,10 +436,14 @@ function authHeaders() {
   return token ? { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
 }
 async function apiAuth(action, body) {
-  const r = await fetch('auth.php?action=' + action, {
-    method: body ? 'POST' : 'GET',
+  const q = new URLSearchParams({ action });
+  if (token) q.set('token', token);
+  const payload = body ? Object.assign({}, body) : null;
+  if (payload && token) payload.token = token;
+  const r = await fetch('auth.php?' + q.toString(), {
+    method: payload ? 'POST' : 'GET',
     headers: authHeaders(),
-    body: body ? JSON.stringify(body) : undefined
+    body: payload ? JSON.stringify(payload) : undefined
   });
   return r.json();
 }
@@ -581,13 +543,14 @@ function showHome(rooms) {
   document.getElementById('viewer').classList.add('hidden');
   document.getElementById('inviteModal').classList.add('hidden');
   document.getElementById('userLabel').textContent = login || 'Гость';
-  renderRooms(rooms || []);
+  if (Array.isArray(rooms)) renderRooms(rooms);
+  else if (!token) renderRooms([]);
   if (token) refreshRooms();
 }
 async function refreshRooms() {
   if (!token) return;
   const r = await apiAuth('my_rooms');
-  if (r.rooms) renderRooms(r.rooms);
+  if (r && Array.isArray(r.rooms)) renderRooms(r.rooms);
 }
 function renderRooms(rooms) {
   const list = document.getElementById('myRoomsList');
@@ -691,7 +654,10 @@ async function createRoom() {
     st.className = 'status ok';
     const title = titleEl.value;
     signal('set_title', hostQuery(), { title, host_secret: hostSecret, host_session: hostSession }).catch(() => {});
-    if (token) await apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host' });
+    if (token) {
+      const saved = await apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host' });
+      if (!saved || saved.error) st.textContent = 'Комната создана, но не сохранилась в аккаунте' + (saved && saved.error ? ': ' + saved.error : '');
+    }
     openInvite();
   } catch (e) {
     st.textContent = e.message; st.className = 'status err';
@@ -795,25 +761,21 @@ function paintEq(analyser, el) {
   if (!el) return;
   const bars = el._bars || (el._bars = el.querySelectorAll('.eq i'));
   if (!analyser) {
-    el.classList.remove('hot');
     bars.forEach(bar => { bar.style.transform = 'scaleY(.12)'; bar.style.background = '#3a4558'; });
     return;
   }
   analyser.getByteFrequencyData(freqScratch);
   const n = bars.length;
   const usable = analyser.frequencyBinCount;
-  let peak = 0;
   for (let i = 0; i < n; i++) {
     const from = Math.floor(i * usable / n);
     const to = Math.max(from + 1, Math.floor((i + 1) * usable / n));
     let m = 0;
     for (let j = from; j < to && j < freqScratch.length; j++) if (freqScratch[j] > m) m = freqScratch[j];
-    if (m > peak) peak = m;
     const h = Math.max(0.12, Math.min(1, (m / 255) * 2.4));
     bars[i].style.transform = 'scaleY(' + h.toFixed(3) + ')';
     bars[i].style.background = m > 18 ? '#3dd68c' : '#3a4558';
   }
-  el.classList.toggle('hot', peak > 18);
 }
 function meterLoop() {
   if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
@@ -1557,287 +1519,6 @@ window.addEventListener('pagehide', () => {
   if (viewerId && room) navigator.sendBeacon?.('signal.php?action=leave&room=' + room + '&viewer=' + viewerId);
 });
 
-const EC_BLOCKS = [1,1,1,1,1,1,1,1,1,1,2,2,1,2,2,4,1,2,4,4,2,4,4,4,2,4,6,5,2,4,6,6,2,5,8,8,4,5,8,8];
-const EC_WORDS = [7,10,13,17,10,16,22,28,15,26,36,44,20,36,52,64,26,48,72,88,36,64,96,112,40,72,108,130,48,88,132,156,60,110,160,192,72,130,192,224];
-const TOTAL_CW = [0,26,44,70,100,134,172,196,242,292,346];
-
-const GF_EXP = new Uint8Array(512);
-const GF_LOG = new Uint8Array(256);
-(function initGf() {
-  let x = 1;
-  for (let i = 0; i < 255; i++) {
-    GF_EXP[i] = x;
-    GF_LOG[x] = i;
-    x <<= 1;
-    if (x & 0x100) x ^= 0x11d;
-  }
-  for (let i = 255; i < 512; i++) GF_EXP[i] = GF_EXP[i - 255];
-})();
-function gfMul(a, b) {
-  if (a === 0 || b === 0) return 0;
-  return GF_EXP[GF_LOG[a] + GF_LOG[b]];
-}
-function rsRemainder(data, nsym) {
-  const gen = new Array(nsym).fill(0);
-  gen[nsym - 1] = 1;
-  let root = 1;
-  for (let i = 0; i < nsym; i++) {
-    for (let j = 0; j < nsym; j++) {
-      gen[j] = gfMul(gen[j], root);
-      if (j + 1 < nsym) gen[j] ^= gen[j + 1];
-    }
-    root = gfMul(root, 2);
-  }
-  const res = new Array(nsym).fill(0);
-  for (let i = 0; i < data.length; i++) {
-    const factor = data[i] ^ res[0];
-    res.copyWithin(0, 1);
-    res[nsym - 1] = 0;
-    for (let j = 0; j < nsym; j++) res[j] ^= gfMul(gen[j], factor);
-  }
-  return res;
-}
-
-function alignmentPositions(version) {
-  if (version === 1) return [];
-  const posCount = Math.floor(version / 7) + 2;
-  const size = version * 4 + 17;
-  const intervals = Math.ceil((size - 13) / (2 * posCount - 2)) * 2;
-  const positions = [size - 7];
-  for (let i = 1; i < posCount - 1; i++) positions[i] = positions[i - 1] - intervals;
-  positions.push(6);
-  return positions.reverse();
-}
-
-function makeQr(text) {
-  const bytes = new TextEncoder().encode(String(text));
-  let version = 0;
-  let dataCw = 0;
-  for (let v = 1; v <= 10; v++) {
-    const blocks = EC_BLOCKS[(v - 1) * 4 + 1];
-    const ecTotal = EC_WORDS[(v - 1) * 4 + 1];
-    const total = TOTAL_CW[v];
-    const data = total - ecTotal;
-    const cc = v < 10 ? 8 : 16;
-    const need = 4 + cc + bytes.length * 8;
-    if (need <= data * 8) { version = v; dataCw = data; break; }
-  }
-  if (!version) throw new Error('Ссылка слишком длинная для QR');
-  const bits = [];
-  const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
-  push(0x4, 4);
-  push(bytes.length, version < 10 ? 8 : 16);
-  for (const b of bytes) push(b, 8);
-  const cap = dataCw * 8;
-  push(0, Math.min(4, cap - bits.length));
-  while (bits.length % 8) bits.push(0);
-  const pads = [0xec, 0x11];
-  let pi = 0;
-  while (bits.length < cap) { push(pads[pi], 8); pi ^= 1; }
-  const data = [];
-  for (let i = 0; i < dataCw; i++) {
-    let n = 0;
-    for (let b = 0; b < 8; b++) n = (n << 1) | bits[i * 8 + b];
-    data.push(n);
-  }
-  const v = version;
-  const numBlocks = EC_BLOCKS[(v - 1) * 4 + 1];
-  const ecTotal = EC_WORDS[(v - 1) * 4 + 1];
-  const ecLen = ecTotal / numBlocks;
-  const shortLen = Math.floor(dataCw / numBlocks);
-  const longCount = dataCw % numBlocks;
-  const shortCount = numBlocks - longCount;
-  const dataBlocks = [];
-  const ecBlocks = [];
-  let off = 0;
-  for (let i = 0; i < numBlocks; i++) {
-    const len = shortLen + (i >= shortCount ? 1 : 0);
-    const block = data.slice(off, off + len);
-    off += len;
-    dataBlocks.push(block);
-    ecBlocks.push(rsRemainder(block, ecLen));
-  }
-  const out = [];
-  const maxD = shortLen + (longCount ? 1 : 0);
-  for (let i = 0; i < maxD; i++) for (const b of dataBlocks) if (i < b.length) out.push(b[i]);
-  for (let i = 0; i < ecLen; i++) for (const b of ecBlocks) out.push(b[i]);
-
-  const size = v * 4 + 17;
-  const modules = Array.from({ length: size }, () => new Uint8Array(size));
-  const isFunc = Array.from({ length: size }, () => new Uint8Array(size));
-  function setFunc(x, y, dark) {
-    if (x < 0 || y < 0 || x >= size || y >= size) return;
-    modules[y][x] = dark ? 1 : 0;
-    isFunc[y][x] = 1;
-  }
-  function finder(x0, y0) {
-    for (let dy = -1; dy <= 7; dy++) {
-      for (let dx = -1; dx <= 7; dx++) {
-        const xx = x0 + dx, yy = y0 + dy;
-        if (xx < 0 || yy < 0 || xx >= size || yy >= size) continue;
-        const on = dx >= 0 && dx <= 6 && dy >= 0 && dy <= 6 && (dx === 0 || dx === 6 || dy === 0 || dy === 6 || (dx >= 2 && dx <= 4 && dy >= 2 && dy <= 4));
-        setFunc(xx, yy, on);
-      }
-    }
-  }
-  finder(0, 0);
-  finder(size - 7, 0);
-  finder(0, size - 7);
-  const align = alignmentPositions(v);
-  for (let i = 0; i < align.length; i++) {
-    for (let j = 0; j < align.length; j++) {
-      if ((i === 0 && j === 0) || (i === 0 && j === align.length - 1) || (i === align.length - 1 && j === 0)) continue;
-      const x = align[j], y = align[i];
-      for (let dy = -2; dy <= 2; dy++) {
-        for (let dx = -2; dx <= 2; dx++) setFunc(x + dx, y + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
-      }
-    }
-  }
-  for (let i = 0; i < size; i++) {
-    if (!isFunc[i][6]) setFunc(6, i, i % 2 === 0);
-    if (!isFunc[6][i]) setFunc(i, 6, i % 2 === 0);
-  }
-  setFunc(8, size - 8, true);
-  for (let i = 0; i < 9; i++) { isFunc[8][i] = 1; isFunc[i][8] = 1; }
-  for (let i = 0; i < 8; i++) { isFunc[8][size - 1 - i] = 1; isFunc[size - 1 - i][8] = 1; }
-  if (v >= 7) {
-    for (let i = 0; i < 18; i++) {
-      const a = size - 11 + (i % 3);
-      const b = Math.floor(i / 3);
-      isFunc[b][a] = 1;
-      isFunc[a][b] = 1;
-    }
-  }
-  let bitIndex = 0;
-  const totalBits = out.length * 8;
-  for (let right = size - 1; right >= 1; right -= 2) {
-    if (right === 6) right = 5;
-    for (let vert = 0; vert < size; vert++) {
-      for (let j = 0; j < 2; j++) {
-        const x = right - j;
-        const upward = ((right + 1) & 2) === 0;
-        const y = upward ? size - 1 - vert : vert;
-        if (isFunc[y][x]) continue;
-        let dark = false;
-        if (bitIndex < totalBits) {
-          const byte = out[bitIndex >>> 3];
-          dark = ((byte >>> (7 - (bitIndex & 7))) & 1) === 1;
-          bitIndex++;
-        }
-        modules[y][x] = dark ? 1 : 0;
-      }
-    }
-  }
-  function maskBit(mask, x, y) {
-    switch (mask) {
-      case 0: return (x + y) % 2 === 0;
-      case 1: return y % 2 === 0;
-      case 2: return x % 3 === 0;
-      case 3: return (x + y) % 3 === 0;
-      case 4: return (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0;
-      case 5: return (x * y) % 2 + (x * y) % 3 === 0;
-      case 6: return ((x * y) % 2 + (x * y) % 3) % 2 === 0;
-      default: return ((x + y) % 2 + (x * y) % 3) % 2 === 0;
-    }
-  }
-  function formatBits(mask) {
-    const data = mask;
-    let rem = data;
-    for (let i = 0; i < 10; i++) rem = (rem << 1) ^ (((rem >>> 9) & 1) * 0x537);
-    return ((data << 10) | (rem & 0x3ff)) ^ 0x5412;
-  }
-  function applyFormat(grid, mask) {
-    const bits = formatBits(mask);
-    const bit = i => (bits >>> i) & 1;
-    for (let i = 0; i <= 5; i++) grid[i][8] = bit(i);
-    grid[7][8] = bit(6);
-    grid[8][8] = bit(7);
-    grid[8][7] = bit(8);
-    for (let i = 9; i < 15; i++) grid[8][14 - i] = bit(i);
-    for (let i = 0; i < 8; i++) grid[8][size - 1 - i] = bit(i);
-    for (let i = 8; i < 15; i++) grid[size - 15 + i][8] = bit(i);
-    grid[size - 8][8] = 1;
-  }
-  function applyVersion(grid) {
-    if (v < 7) return;
-    let rem = v;
-    for (let i = 0; i < 12; i++) rem = (rem << 1) ^ (((rem >>> 11) & 1) * 0x1f25);
-    const bits = (v << 12) | (rem & 0xfff);
-    for (let i = 0; i < 18; i++) {
-      const on = (bits >>> i) & 1;
-      const a = size - 11 + (i % 3);
-      const b = Math.floor(i / 3);
-      grid[b][a] = on;
-      grid[a][b] = on;
-    }
-  }
-  function penalty(grid) {
-    const n = size;
-    let score = 0;
-    for (let y = 0; y < n; y++) {
-      let run = 1;
-      for (let x = 1; x < n; x++) {
-        if (grid[y][x] === grid[y][x - 1]) run++;
-        else { if (run >= 5) score += 3 + run - 5; run = 1; }
-      }
-      if (run >= 5) score += 3 + run - 5;
-    }
-    for (let x = 0; x < n; x++) {
-      let run = 1;
-      for (let y = 1; y < n; y++) {
-        if (grid[y][x] === grid[y - 1][x]) run++;
-        else { if (run >= 5) score += 3 + run - 5; run = 1; }
-      }
-      if (run >= 5) score += 3 + run - 5;
-    }
-    for (let y = 0; y < n - 1; y++) {
-      for (let x = 0; x < n - 1; x++) {
-        const c = grid[y][x];
-        if (c === grid[y][x + 1] && c === grid[y + 1][x] && c === grid[y + 1][x + 1]) score += 3;
-      }
-    }
-    const pat = [1,0,1,1,1,0,1,0,0,0,0];
-    const pat2 = [0,0,0,0,1,0,1,1,1,0,1];
-    function has(seq, p) {
-      outer: for (let i = 0; i + p.length <= seq.length; i++) {
-        for (let k = 0; k < p.length; k++) if (seq[i + k] !== p[k]) continue outer;
-        return true;
-      }
-      return false;
-    }
-    for (let y = 0; y < n; y++) {
-      const row = Array.from(grid[y]);
-      if (has(row, pat) || has(row, pat2)) score += 40;
-    }
-    for (let x = 0; x < n; x++) {
-      const col = [];
-      for (let y = 0; y < n; y++) col.push(grid[y][x]);
-      if (has(col, pat) || has(col, pat2)) score += 40;
-    }
-    let dark = 0;
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) dark += grid[y][x];
-    const pct = (dark * 100) / (n * n);
-    score += Math.floor(Math.abs(pct - 50) / 5) * 10;
-    return score;
-  }
-  let best = null;
-  let bestScore = Infinity;
-  let bestMask = 0;
-  for (let mask = 0; mask < 8; mask++) {
-    const grid = modules.map(row => row.slice());
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        if (!isFunc[y][x] && maskBit(mask, x, y)) grid[y][x] ^= 1;
-      }
-    }
-    applyFormat(grid, mask);
-    applyVersion(grid);
-    const s = penalty(grid);
-    if (s < bestScore) { bestScore = s; best = grid; bestMask = mask; }
-  }
-  best.mask = bestMask;
-  return best;
-}
 
 
 function paintRoomChrome() {
@@ -1845,62 +1526,11 @@ function paintRoomChrome() {
   document.getElementById('roomLink').value = url;
   document.getElementById('watchLink').value = url;
   document.getElementById('roomCode').textContent = room || '';
-  document.getElementById('embedCode').value = url
-    ? '<iframe src="' + url + '" allow="autoplay; fullscreen; microphone" style="width:100%;aspect-ratio:16/9;border:0"></iframe>'
-    : '';
-  const grid = document.getElementById('socialGrid');
-  grid.innerHTML = '';
-  const text = 'Смотри экран со мной в Ezomatrix';
-  const links = [
-    ['Email', 'mailto:?subject=' + encodeURIComponent(text) + '&body=' + encodeURIComponent(url)],
-    ['Telegram', 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text)],
-    ['WhatsApp', 'https://wa.me/?text=' + encodeURIComponent(text + ' ' + url)],
-    ['VK', 'https://vk.com/share.php?url=' + encodeURIComponent(url)]
-  ];
-  links.forEach(([label, href]) => {
-    const a = document.createElement('a');
-    a.href = href;
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = label;
-    grid.appendChild(a);
-  });
-  drawQr(url);
-}
-function drawQr(text) {
-  const canvas = document.getElementById('qrCanvas');
-  if (!canvas || !text) return;
-  let modules;
-  try { modules = makeQr(text); }
-  catch (e) { return; }
-  const n = modules.length;
-  const scale = 4;
-  const quiet = 2;
-  const size = (n + quiet * 2) * scale;
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 0, size, size);
-  ctx.fillStyle = '#111';
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      if (modules[y][x]) ctx.fillRect((x + quiet) * scale, (y + quiet) * scale, scale, scale);
-    }
-  }
 }
 function openInvite() {
   if (!room) return;
   paintRoomChrome();
   document.getElementById('inviteModal').classList.remove('hidden');
-  showInvTab('link');
-}
-function showInvTab(name) {
-  document.querySelectorAll('.inv-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.inv === name));
-  document.getElementById('invLink').classList.toggle('hidden', name !== 'link');
-  document.getElementById('invSocial').classList.toggle('hidden', name !== 'social');
-  document.getElementById('invQr').classList.toggle('hidden', name !== 'qr');
-  document.getElementById('invEmbed').classList.toggle('hidden', name !== 'embed');
 }
 document.getElementById('openInvite').onclick = () => openInvite();
 document.getElementById('copyWatchLink').onclick = () => {
@@ -1927,18 +1557,6 @@ document.getElementById('closeInvite').onclick = () => document.getElementById('
 document.getElementById('inviteModal').onclick = e => {
   if (e.target.id === 'inviteModal') e.currentTarget.classList.add('hidden');
 };
-document.querySelectorAll('.inv-tab').forEach(btn => {
-  btn.onclick = () => showInvTab(btn.dataset.inv);
-});
-document.getElementById('copyEmbed').onclick = () => {
-  const text = document.getElementById('embedCode').value;
-  if (!text) return;
-  navigator.clipboard.writeText(text).then(() => {
-    const b = document.getElementById('copyEmbed');
-    b.textContent = 'Скопировано';
-    setTimeout(() => { b.textContent = 'Копировать код'; }, 1200);
-  }).catch(() => {});
-};
 document.getElementById('refreshRooms').onclick = () => refreshRooms();
 document.getElementById('roomTitle').onchange = async () => {
   if (!hostSession || !room) return;
@@ -1950,15 +1568,6 @@ document.getElementById('roomTitle').onchange = async () => {
   } catch (e) {}
   if (token) apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host' }).catch(() => {});
 };
-document.querySelectorAll('.side-tab').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.side-tab').forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('tabChat').classList.toggle('hidden', btn.dataset.tab !== 'chat');
-    document.getElementById('tabPlay').classList.toggle('hidden', btn.dataset.tab !== 'play');
-    document.getElementById('tabHist').classList.toggle('hidden', btn.dataset.tab !== 'hist');
-  };
-});
-
 let chatSince = 0;
 let chatTimer = null;
 let chatBusy = false;
@@ -1974,7 +1583,6 @@ function startRoomSide() {
   onlineNames = new Set();
   shareHeard = false;
   document.getElementById('chatLog').innerHTML = '';
-  document.getElementById('histLog').innerHTML = '';
   if (chatTimer) clearInterval(chatTimer);
   chatTimer = setInterval(pollChat, 1000);
   pollChat();
@@ -1998,17 +1606,6 @@ function paintPeople(people) {
     row.classList.toggle('online', onlineNames.has(row.dataset.name || ''));
   });
   document.getElementById('viewerCount').textContent = people && people.length ? String(people.length) : '';
-}
-function pushHist(text) {
-  const log = document.getElementById('histLog');
-  const row = document.createElement('div');
-  row.className = 'hist-line';
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2, '0');
-  const mm = String(now.getMinutes()).padStart(2, '0');
-  row.textContent = text + ' · ' + hh + ':' + mm;
-  log.appendChild(row);
-  log.scrollTop = log.scrollHeight;
 }
 async function pollChat() {
   if (!room || !chatTimer) return;
@@ -2035,18 +1632,8 @@ async function pollChat() {
       if (seenPeople) {
         const prev = new Set(seenPeople.split('|').filter(Boolean));
         const next = new Set(key.split('|').filter(Boolean));
-        next.forEach(item => {
-          if (!prev.has(item)) {
-            pushHist(item.split(':').slice(1).join(':') + ' вошёл');
-            playJoin();
-          }
-        });
-        prev.forEach(item => {
-          if (!next.has(item)) {
-            pushHist(item.split(':').slice(1).join(':') + ' вышел');
-            playLeave();
-          }
-        });
+        next.forEach(item => { if (!prev.has(item)) playJoin(); });
+        prev.forEach(item => { if (!next.has(item)) playLeave(); });
       }
       seenPeople = key;
       paintPeople(people);

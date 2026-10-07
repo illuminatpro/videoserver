@@ -47,12 +47,27 @@ function user_by_token($token) {
     }
     return null;
 }
-function auth_user() {
-    $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+function request_token() {
+    global $input;
+    $hdr = $_SERVER['HTTP_AUTHORIZATION']
+        ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '')
+        ?: ($_SERVER['Authorization'] ?? '');
+    if (!$hdr) {
+        $headers = [];
+        if (function_exists('getallheaders')) $headers = getallheaders() ?: [];
+        elseif (function_exists('apache_request_headers')) $headers = apache_request_headers() ?: [];
+        foreach ($headers as $k => $v) {
+            if (strcasecmp((string)$k, 'Authorization') === 0) { $hdr = $v; break; }
+        }
+    }
     $token = '';
-    if (preg_match('/Bearer\s+(\S+)/i', $hdr, $m)) $token = $m[1];
-    if (!$token) $token = $_GET['token'] ?? '';
-    return user_by_token($token);
+    if (preg_match('/Bearer\s+(\S+)/i', (string)$hdr, $m)) $token = $m[1];
+    if (!$token) $token = (string)($_GET['token'] ?? '');
+    if (!$token && is_array($input) && isset($input['token'])) $token = (string)$input['token'];
+    return preg_replace('/[^a-fA-F0-9]/', '', $token);
+}
+function auth_user() {
+    return user_by_token(request_token());
 }
 
 $action = $_GET['action'] ?? '';
