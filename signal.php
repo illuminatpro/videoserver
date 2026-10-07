@@ -195,7 +195,9 @@ if ($action === 'join') {
         if (!$data) out(['error' => 'Комната не найдена']);
         $viewerId = rand_token(8, 'abcdefghijkmnpqrstuvwxyz23456789');
         $viewers = (array)($data['viewers'] ?? []);
-        $viewers[$viewerId] = blank_viewer();
+        $view = blank_viewer();
+        $view['name'] = trim(mb_substr($GLOBALS['input']['name'] ?? 'Зритель', 0, 32)) ?: 'Зритель';
+        $viewers[$viewerId] = $view;
         $data['viewers'] = $viewers;
         $save($data);
         out([
@@ -450,6 +452,92 @@ if ($action === 'ack_answer') {
             $save($data);
         }
         out(['ok' => true]);
+    });
+    exit;
+}
+
+function room_people($data) {
+    $people = [];
+    $hostSeen = (int)($data['host_seen'] ?? 0);
+    if (!empty($data['host_name']) && $hostSeen > time() - 12) {
+        $people[] = ['name' => $data['host_name'], 'role' => 'host'];
+    }
+    foreach ((array)($data['viewers'] ?? []) as $v) {
+        $v = (array)$v;
+        if ((int)($v['seen'] ?? 0) > time() - 12) {
+            $people[] = ['name' => ($v['name'] ?? '') !== '' ? $v['name'] : 'Зритель', 'role' => 'viewer'];
+        }
+    }
+    return $people;
+}
+
+// ===== CHAT =====
+if ($action === 'chat_send') {
+    $name = trim(mb_substr($input['name'] ?? 'Гость', 0, 32));
+    $text = trim(mb_substr($input['text'] ?? '', 0, 400));
+    if ($name === '') $name = 'Гость';
+    if ($text === '') out(['error' => 'Пустое сообщение']);
+    with_room($roomFile, function ($data, $save) use ($name, $text) {
+        if (!$data) out(['error' => 'Комната не найдена']);
+        $seq = (int)($data['chat_seq'] ?? 0) + 1;
+        $chat = array_values((array)($data['chat'] ?? []));
+        $chat[] = ['id' => $seq, 'name' => $name, 'text' => $text, 't' => time()];
+        if (count($chat) > 100) $chat = array_slice($chat, -100);
+        $data['chat'] = $chat;
+        $data['chat_seq'] = $seq;
+        $save($data);
+        out(['ok' => true, 'id' => $seq]);
+    });
+    exit;
+}
+if ($action === 'chat_poll') {
+    $since = (int)($_GET['since'] ?? 0);
+    $name = trim(mb_substr($_GET['name'] ?? '', 0, 32));
+    with_room($roomFile, function ($data, $save) use ($since, $name, $viewer) {
+        if (!$data) out(['error' => 'Комната не найдена']);
+        $dirty = false;
+        if ($viewer) {
+            $viewers = (array)($data['viewers'] ?? []);
+            if (isset($viewers[$viewer])) {
+                $v = (array)$viewers[$viewer];
+                $v['seen'] = time();
+                if ($name !== '') $v['name'] = $name;
+                $viewers[$viewer] = $v;
+                $data['viewers'] = $viewers;
+                $dirty = true;
+            }
+        }
+        $secret = $_GET['host_secret'] ?? '';
+        $session = $_GET['host_session'] ?? '';
+        if ($secret && $session && secret_ok($data, $secret) && session_ok($data, $session)) {
+            $data['host_seen'] = time();
+            $data['host_online'] = true;
+            if ($name !== '') $data['host_name'] = $name;
+            $dirty = true;
+        }
+        if ($dirty) $save($data);
+        $messages = [];
+        foreach ((array)($data['chat'] ?? []) as $m) {
+            $m = (array)$m;
+            if ((int)($m['id'] ?? 0) > $since) $messages[] = $m;
+        }
+        out([
+            'messages' => $messages,
+            'people' => room_people($data),
+            'title' => $data['title'] ?? ''
+        ]);
+    });
+    exit;
+}
+if ($action === 'set_title') {
+    $title = trim(mb_substr($input['title'] ?? '', 0, 64));
+    if ($title === '') out(['error' => 'Пустое название']);
+    with_room($roomFile, function ($data, $save) use ($title) {
+        if (!$data) out(['error' => 'Комната не найдена']);
+        host_auth_or_fail($data);
+        $data['title'] = $title;
+        $save($data);
+        out(['ok' => true, 'title' => $title]);
     });
     exit;
 }
