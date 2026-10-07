@@ -141,18 +141,28 @@ if ($action === 'save_room' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $code = preg_replace('/[^a-zA-Z0-9]/', '', $input['room'] ?? '');
     $secret = preg_replace('/[^a-zA-Z0-9]/', '', $input['host_secret'] ?? '');
+    $role = (($input['role'] ?? '') === 'viewer') ? 'viewer' : 'host';
     $title = trim(mb_substr($input['title'] ?? $code, 0, 64));
-    if (!$code || !$secret) {
+    if (!$code) {
+        echo json_encode(['error' => 'Нет кода комнаты']);
+        exit;
+    }
+    if ($role === 'host' && !$secret) {
         echo json_encode(['error' => 'Нет кода или секрета']);
         exit;
     }
     $rooms = $u['rooms'] ?? [];
-    // обновить или добавить
+    // обновить или добавить. Секрет хоста не затирается, если человек зашёл как зритель.
     $found = false;
     foreach ($rooms as &$r) {
-        if ($r['code'] === $code) {
-            $r['host_secret'] = $secret;
-            $r['title'] = $title;
+        if (($r['code'] ?? '') === $code) {
+            if ($secret) {
+                $r['host_secret'] = $secret;
+                $r['role'] = 'host';
+            } elseif (empty($r['host_secret'])) {
+                $r['role'] = 'viewer';
+            }
+            $r['title'] = $title ?: ($r['title'] ?? $code);
             $r['updated'] = time();
             $found = true;
             break;
@@ -163,6 +173,7 @@ if ($action === 'save_room' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $rooms[] = [
             'code' => $code,
             'host_secret' => $secret,
+            'role' => $secret ? 'host' : 'viewer',
             'title' => $title,
             'created' => time(),
             'updated' => time()
@@ -171,14 +182,15 @@ if ($action === 'save_room' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     $u['rooms'] = $rooms;
     save_user($u['login'], $u);
 
-    // мета комнат
-    global $roomsMetaDir;
-    file_put_contents($roomsMetaDir . '/' . $code . '.json', json_encode([
-        'owner' => $u['login'],
-        'host_secret' => $secret,
-        'title' => $title,
-        'updated' => time()
-    ]));
+    if ($secret) {
+        global $roomsMetaDir;
+        file_put_contents($roomsMetaDir . '/' . $code . '.json', json_encode([
+            'owner' => $u['login'],
+            'host_secret' => $secret,
+            'title' => $title,
+            'updated' => time()
+        ], JSON_UNESCAPED_UNICODE));
+    }
 
     echo json_encode(['ok' => true, 'rooms' => $rooms]);
     exit;
