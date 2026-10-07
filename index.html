@@ -3,21 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ScreenShare</title>
+  <title>Ezomatrix</title>
   <style>
     :root {
-      --bg:#0f0f13;--card:#1a1a24ee;--accent:#7c5cff;--text:#e8e8f0;
-      --muted:#8888a0;--success:#3dd68c;--danger:#ff5c7c;--border:#2a2a3a;
+      --bg:#010804;--card:#07140eee;--accent:#12c45a;--text:#e7ffe9;
+      --muted:#8fb89a;--success:#3dd68c;--danger:#ff5c7c;--border:#163322;
     }
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    body{font-family:system-ui,-apple-system,sans-serif;background:#000;color:var(--text);min-height:100vh}
     #bgCanvas,#waitCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
     #bgCanvas{z-index:0}
     #waitCanvas{z-index:25;opacity:0;transition:opacity .35s}
     body.waiting #waitCanvas{opacity:1}
     .shell{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:28px 16px 40px}
     body.cinema .shell,body.waiting .shell{display:none}
-    h1{font-size:1.9rem;margin-bottom:6px;background:linear-gradient(135deg,#7c5cff,#3dd68c);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    h1{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.85rem;letter-spacing:.14em;margin-bottom:6px;background:linear-gradient(180deg,#eaffea,#39ff6a);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
     .sub{color:var(--muted);margin-bottom:18px;font-size:.92rem;text-align:center}
     .card{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:18px 18px 22px;width:100%;max-width:460px;backdrop-filter:blur(16px);box-shadow:0 20px 60px rgba(0,0,0,.35)}
     #signalCanvas{width:100%;height:84px;display:block;border-radius:12px;margin-bottom:14px;background:rgba(0,0,0,.2)}
@@ -100,7 +100,7 @@
   <button id="exitBtn" type="button">Выйти</button>
 
   <div class="shell" id="shell">
-    <h1 id="title">ScreenShare</h1>
+    <h1 id="title">Ezomatrix</h1>
     <p class="sub" id="subtitle">Комната, ссылка для зрителей и смена устройства хоста</p>
     <div class="card" id="card">
       <canvas id="signalCanvas" width="800" height="168" aria-hidden="true"></canvas>
@@ -1118,16 +1118,9 @@ function bootCanvases() {
   const bgx = bg.getContext('2d');
   const wx = wait.getContext('2d');
   const sx = sig.getContext('2d');
-  const dots = Array.from({ length: 42 }, () => ({
-    x: Math.random(), y: Math.random(),
-    vx: (Math.random() - 0.5) * 0.00012,
-    vy: (Math.random() - 0.5) * 0.00012
-  }));
-  const orbs = [
-    { x: 0.18, y: 0.28, r: 0.42, color: '124,92,255', p: 0.4 },
-    { x: 0.82, y: 0.72, r: 0.36, color: '61,214,140', p: 2.1 },
-    { x: 0.62, y: 0.18, r: 0.28, color: '90,150,255', p: 4.2 }
-  ];
+  const glyphs = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ0123456789EZOMATRIX';
+  const cell = 18;
+  let drops = [];
   function fit(c, ctx) {
     const dpr = Math.min(devicePixelRatio || 1, 2);
     const w = c.clientWidth || innerWidth;
@@ -1142,66 +1135,34 @@ function bootCanvases() {
   function drawBg() {
     if (document.hidden || document.body.classList.contains('cinema')) return;
     const { w, h } = fit(bg, bgx);
-    bgx.clearRect(0, 0, w, h);
-    bgx.fillStyle = '#0f0f13';
-    bgx.fillRect(0, 0, w, h);
-    const t = performance.now();
-    orbs.forEach(o => {
-      const ox = (o.x + Math.sin(t / 4200 + o.p) * 0.07) * w;
-      const oy = (o.y + Math.cos(t / 5100 + o.p) * 0.06) * h;
-      const rad = o.r * Math.min(w, h);
-      const g = bgx.createRadialGradient(ox, oy, 0, ox, oy, rad);
-      g.addColorStop(0, 'rgba(' + o.color + ',.34)');
-      g.addColorStop(1, 'rgba(' + o.color + ',0)');
-      bgx.fillStyle = g;
-      bgx.beginPath();
-      bgx.arc(ox, oy, rad, 0, Math.PI * 2);
-      bgx.fill();
-    });
-    dots.forEach(d => {
-      d.x += d.vx; d.y += d.vy;
-      if (d.x < 0 || d.x > 1) d.vx *= -1;
-      if (d.y < 0 || d.y > 1) d.vy *= -1;
-    });
-    for (let i = 0; i < dots.length; i++) {
-      for (let j = i + 1; j < dots.length; j++) {
-        const dx = (dots[i].x - dots[j].x) * w;
-        const dy = (dots[i].y - dots[j].y) * h;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 140) {
-          bgx.strokeStyle = 'rgba(124,92,255,' + ((1 - dist / 140) * 0.28) + ')';
-          bgx.beginPath();
-          bgx.moveTo(dots[i].x * w, dots[i].y * h);
-          bgx.lineTo(dots[j].x * w, dots[j].y * h);
-          bgx.stroke();
-        }
+    const n = Math.max(1, Math.ceil(w / cell));
+    if (drops.length !== n) {
+      const next = [];
+      for (let i = 0; i < n; i++) {
+        next.push(drops[i] || { y: Math.random() * h, speed: 2.2 + Math.random() * 5.5 });
       }
+      drops = next;
     }
-    dots.forEach(d => {
-      bgx.fillStyle = 'rgba(232,232,240,.75)';
-      bgx.beginPath();
-      bgx.arc(d.x * w, d.y * h, 1.6, 0, Math.PI * 2);
-      bgx.fill();
-    });
+    bgx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    bgx.fillRect(0, 0, w, h);
+    bgx.font = cell + 'px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+    bgx.textBaseline = 'top';
+    for (let i = 0; i < drops.length; i++) {
+      const d = drops[i];
+      const x = i * cell;
+      const head = glyphs[(Math.random() * glyphs.length) | 0];
+      bgx.fillStyle = '#d8ffd8';
+      bgx.fillText(head, x, d.y);
+      bgx.fillStyle = '#00ff41';
+      bgx.fillText(glyphs[(Math.random() * glyphs.length) | 0], x, d.y - cell);
+      d.y += d.speed;
+      if (d.y > h + cell && Math.random() > 0.965) d.y = -cell * (2 + Math.random() * 16);
+    }
   }
   function drawWait() {
     if (!document.body.classList.contains('waiting') || document.hidden) return;
     const { w, h } = fit(wait, wx);
     wx.clearRect(0, 0, w, h);
-    const t = performance.now();
-    const cx = w / 2, cy = h / 2 - 40;
-    for (let i = 0; i < 3; i++) {
-      const rad = 70 + i * 46 + Math.sin(t / 700 + i) * 8;
-      wx.strokeStyle = i === 1 ? 'rgba(61,214,140,.55)' : 'rgba(124,92,255,.45)';
-      wx.lineWidth = 2;
-      wx.beginPath();
-      wx.arc(cx, cy, rad, t / 800 + i, t / 800 + i + 1.4);
-      wx.stroke();
-    }
-    wx.fillStyle = 'rgba(124,92,255,.9)';
-    wx.beginPath();
-    wx.arc(cx + Math.cos(t / 600) * 90, cy + Math.sin(t / 600) * 90, 4, 0, Math.PI * 2);
-    wx.fill();
   }
   function drawSignal() {
     if (document.hidden || document.body.classList.contains('cinema') || document.body.classList.contains('waiting')) return;
@@ -1209,7 +1170,7 @@ function bootCanvases() {
     sx.setTransform(1, 0, 0, 1, 0, 0);
     sx.clearRect(0, 0, w, h);
     const t = performance.now();
-    sx.strokeStyle = 'rgba(124,92,255,.35)';
+    sx.strokeStyle = 'rgba(0,255,70,.22)';
     sx.lineWidth = 1;
     for (let x = 0; x < w; x += 40) {
       sx.beginPath(); sx.moveTo(x, 0); sx.lineTo(x, h); sx.stroke();
@@ -1222,7 +1183,7 @@ function bootCanvases() {
         + Math.sin(x / 64 - t / 900) * 14;
       if (x === 0) sx.moveTo(x, y); else sx.lineTo(x, y);
     }
-    sx.strokeStyle = '#7c5cff';
+    sx.strokeStyle = '#39ff6a';
     sx.lineWidth = 2.4;
     sx.stroke();
     sx.strokeStyle = 'rgba(61,214,140,.8)';
