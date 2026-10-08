@@ -57,7 +57,9 @@
     .btn-ghost{background:transparent;border:1px solid #3c4658}
     .btn-icon{width:36px;padding:0;height:36px;font-size:18px}
     .room-list{border:1px solid #323c4c;border-radius:4px;overflow:hidden;background:#2a3342}
-    .room-row{width:100%;display:flex;align-items:center;gap:14px;padding:13px 16px;color:#e8eef6;border-bottom:1px solid #323c4c;text-align:left;font-size:15px;background:transparent}
+    .room-row{width:100%;display:flex;align-items:center;gap:14px;padding:13px 16px;color:#e8eef6;border-bottom:1px solid #323c4c;text-align:left;font-size:15px;background:transparent;cursor:pointer}
+    .room-del{width:28px;height:28px;border-radius:6px;background:transparent;color:#8b97a8;padding:0;flex:0 0 auto;font-size:16px;line-height:1}
+    .room-del:hover{color:#ffb4c0;background:rgba(255,138,160,.12)}
     .room-row:last-child{border-bottom:none}
     .room-row:hover{background:#323c4e}
     .grip{color:#8b97a8;width:18px}
@@ -443,9 +445,89 @@ async function apiAuth(action, body) {
   const r = await fetch('auth.php?' + q.toString(), {
     method: payload ? 'POST' : 'GET',
     headers: authHeaders(),
+    credentials: 'same-origin',
     body: payload ? JSON.stringify(payload) : undefined
   });
   return r.json();
+}
+function roomStoreKey(kind) {
+  return 'ss_' + kind + '_' + String(login || '').toLowerCase();
+}
+function readJsonStore(kind) {
+  try {
+    const v = JSON.parse(localStorage.getItem(roomStoreKey(kind)) || '[]');
+    return Array.isArray(v) ? v : [];
+  } catch (e) { return []; }
+}
+function tombSet() {
+  return new Set(readJsonStore('gone').map(c => String(c)));
+}
+function readRoomCache() {
+  return readJsonStore('rooms').filter(r => r && r.code && !tombSet().has(r.code));
+}
+function writeRoomCache(rooms) {
+  if (!login) return;
+  const dead = tombSet();
+  localStorage.setItem(roomStoreKey('rooms'), JSON.stringify((rooms || []).filter(r => r && r.code && !dead.has(r.code))));
+}
+function buryRoom(code) {
+  if (!login || !code) return;
+  const gone = readJsonStore('gone').filter(c => c !== code);
+  gone.push(code);
+  localStorage.setItem(roomStoreKey('gone'), JSON.stringify(gone.slice(-200)));
+  writeRoomCache(readRoomCache().filter(r => r.code !== code));
+}
+function rememberRoom(rm) {
+  if (!login || !rm || !rm.code || tombSet().has(rm.code)) return;
+  const list = readRoomCache().filter(r => r.code !== rm.code);
+  list.push({
+    code: rm.code,
+    host_secret: rm.host_secret || '',
+    role: rm.host_secret ? 'host' : (rm.role || 'viewer'),
+    title: rm.title || 'Комната',
+    people: Array.isArray(rm.people) ? rm.people.slice(0, 8) : [],
+    updated: Math.floor(Date.now() / 1000)
+  });
+  writeRoomCache(list);
+}
+function mergeRoomLists(server, local) {
+  const dead = tombSet();
+  const map = new Map();
+  (local || []).forEach(r => {
+    if (r && r.code && !dead.has(r.code)) map.set(r.code, r);
+  });
+  (server || []).forEach(r => {
+    if (!r || !r.code || dead.has(r.code)) return;
+    const prev = map.get(r.code) || {};
+    map.set(r.code, Object.assign({}, prev, r, {
+      host_secret: r.host_secret || prev.host_secret || '',
+      people: (r.people && r.people.length) ? r.people : (prev.people || []),
+      title: r.title || prev.title || 'Комната'
+    }));
+  });
+  return [...map.values()];
+}
+let roomSyncing = false;
+async function syncMissingRooms(server, merged) {
+  if (roomSyncing || !token) return;
+  const dead = tombSet();
+  (server || []).filter(r => r && dead.has(r.code)).forEach(r => apiAuth('delete_room', { room: r.code }).catch(() => {}));
+  const have = new Set((server || []).filter(r => r && r.code && !dead.has(r.code)).map(r => r.code));
+  const missing = (merged || []).filter(r => r && r.host_secret && !have.has(r.code));
+  if (!missing.length) return;
+  roomSyncing = true;
+  try {
+    for (const rm of missing) {
+      const saved = await apiAuth('save_room', {
+        room: rm.code,
+        host_secret: rm.host_secret,
+        title: rm.title || 'Комната',
+        role: 'host',
+        people: rm.people || []
+      });
+      if (saved && Array.isArray(saved.rooms)) writeRoomCache(mergeRoomLists(saved.rooms, readRoomCache()));
+    }
+  } finally { roomSyncing = false; }
 }
 async function signal(action, query, body) {
   const q = new URLSearchParams({ action });
@@ -543,30 +625,53 @@ function showHome(rooms) {
   document.getElementById('viewer').classList.add('hidden');
   document.getElementById('inviteModal').classList.add('hidden');
   document.getElementById('userLabel').textContent = login || 'Гость';
-  if (Array.isArray(rooms)) renderRooms(rooms);
-  else if (!token) renderRooms([]);
-  if (token) refreshRooms();
+  if (Array.isArray(rooms)) renderRooms(mergeRoomLists(rooms, readRoomCache()));
+  else if (!token) renderRooms(readRoomCache());
+  if (token || login) refreshRooms();
 }
 async function refreshRooms() {
-  if (!token) return;
-  const r = await apiAuth('my_rooms');
-  if (r && Array.isArray(r.rooms)) renderRooms(r.rooms);
+  const local = login ? readRoomCache() : [];
+  if (!token) { renderRooms(local); return; }
+  let server = null;
+  try {
+    const r = await apiAuth('my_rooms');
+    if (r && Array.isArray(r.rooms)) server = r.rooms;
+  } catch (e) {}
+  if (!server) {
+    if (local.length) renderRooms(local);
+    return;
+  }
+  const merged = mergeRoomLists(server, local);
+  renderRooms(merged);
+  writeRoomCache(merged);
+  syncMissingRooms(server, merged);
 }
 function renderRooms(rooms) {
   const list = document.getElementById('myRoomsList');
   const empty = document.getElementById('roomsEmpty');
   list.innerHTML = '';
-  const items = rooms || [];
+  const items = (rooms || []).slice().sort((a, b) => (b.updated || 0) - (a.updated || 0));
   empty.classList.toggle('hidden', items.length > 0);
-  items.slice().reverse().forEach(rm => {
+  items.forEach(rm => {
     const host = !!rm.host_secret;
-    const row = document.createElement('button');
-    row.type = 'button';
+    const row = document.createElement('div');
     row.className = 'room-row';
-    const title = rm.title || rm.code;
-    const letter = String(login || title || '?').slice(0, 1).toUpperCase();
-    row.innerHTML = '<span class="grip" aria-hidden="true">☰</span><span class="room-name">' + esc(title) + '<small>' + esc(rm.code) + '</small></span><span class="avatar-stack"><span class="av">' + esc(letter) + '</span></span><span class="chev" aria-hidden="true">›</span>';
-    row.onclick = () => host ? resumeHost(rm.code, rm.host_secret, title) : openJoin(rm.code, true);
+    row.tabIndex = 0;
+    row.setAttribute('role', 'button');
+    const title = rm.title || 'Комната';
+    const people = (Array.isArray(rm.people) && rm.people.length) ? rm.people.slice(0, 5) : [login || title];
+    const avatars = people.map(n => '<span class="av" title="' + esc(n) + '">' + esc(String(n || '?').slice(0, 1).toUpperCase()) + '</span>').join('');
+    row.innerHTML = '<span class="grip" aria-hidden="true">☰</span><span class="room-name">' + esc(title) + '<small>' + esc(rm.code) + '</small></span><span class="avatar-stack">' + avatars + '</span><button type="button" class="room-del" title="Удалить комнату">✕</button><span class="chev" aria-hidden="true">›</span>';
+    const open = () => host ? resumeHost(rm.code, rm.host_secret, title) : openJoin(rm.code, true);
+    row.onclick = e => { if (e.target.closest('.room-del')) return; open(); };
+    row.onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('.room-del')) { e.preventDefault(); open(); } };
+    row.querySelector('.room-del').onclick = async e => {
+      e.stopPropagation();
+      if (!confirm('Удалить комнату «' + title + '» из списка?')) return;
+      buryRoom(rm.code);
+      renderRooms(readRoomCache());
+      if (token) { try { await apiAuth('delete_room', { room: rm.code }); } catch (err) {} }
+    };
     list.appendChild(row);
   });
 }
@@ -601,9 +706,11 @@ document.getElementById('btnGuest').onclick = () => {
   localStorage.removeItem('ss_token'); localStorage.removeItem('ss_login');
   land([]);
 };
-document.getElementById('btnLogout').onclick = () => {
-  token = ''; login = '';
-  localStorage.removeItem('ss_token'); localStorage.removeItem('ss_login');
+document.getElementById('btnLogout').onclick = async () => {
+  token = '';
+  try { await fetch('auth.php?action=logout', { method: 'POST', credentials: 'same-origin' }); } catch (e) {}
+  localStorage.removeItem('ss_token');
+  localStorage.removeItem('ss_login');
   location.href = location.pathname;
 };
 
@@ -654,9 +761,11 @@ async function createRoom() {
     st.className = 'status ok';
     const title = titleEl.value;
     signal('set_title', hostQuery(), { title, host_secret: hostSecret, host_session: hostSession }).catch(() => {});
+    if (login) rememberRoom({ code: room, host_secret: hostSecret, title, role: 'host', people: [login] });
     if (token) {
-      const saved = await apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host' });
-      if (!saved || saved.error) st.textContent = 'Комната создана, но не сохранилась в аккаунте' + (saved && saved.error ? ': ' + saved.error : '');
+      const saved = await apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host', people: [login] });
+      if (saved && Array.isArray(saved.rooms)) writeRoomCache(mergeRoomLists(saved.rooms, readRoomCache()));
+      else st.textContent = 'Комната создана. На сервер она пока не записалась — в этом браузере она останется и сохранится при следующем входе.';
     }
     openInvite();
   } catch (e) {
@@ -1233,7 +1342,8 @@ async function doJoin() {
     const titleEl = document.getElementById('roomTitle');
     titleEl.value = 'Комната';
     titleEl.readOnly = true;
-    if (token) apiAuth('save_room', { room, role: 'viewer', title: 'Комната ' + room }).then(r => { if (r.rooms) renderRooms(r.rooms); }).catch(() => {});
+    if (login) rememberRoom({ code: room, title: 'Комната', role: 'viewer', people: [login] });
+    if (token) apiAuth('save_room', { room, role: 'viewer', title: 'Комната', people: [login] }).then(r => { if (r && Array.isArray(r.rooms)) writeRoomCache(mergeRoomLists(r.rooms, readRoomCache())); }).catch(() => {});
     startRoomSide();
     startControlsAutoHide();
     try { ensureCtx(); } catch (e) {}
@@ -1505,6 +1615,18 @@ function leaveRoom() {
   document.getElementById('vStatus').textContent = 'Можно войти снова';
   document.getElementById('vStatus').className = 'status';
 }
+async function persistOpenRoom() {
+  if (!room || !hostSecret || !login || viewerId) return;
+  const title = (document.getElementById('roomTitle').value || '').trim() || 'Комната';
+  const names = (typeof onlineNames !== 'undefined' && onlineNames) ? [...onlineNames].filter(Boolean).slice(0, 8) : [];
+  if (!names.length) names.push(login);
+  rememberRoom({ code: room, host_secret: hostSecret, title, role: 'host', people: names });
+  if (!token) return;
+  try {
+    const saved = await apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host', people: names });
+    if (saved && Array.isArray(saved.rooms)) writeRoomCache(mergeRoomLists(saved.rooms, readRoomCache()));
+  } catch (e) {}
+}
 document.getElementById('exitBtn').onclick = async () => {
   if (viewerId) {
     leaveRoom();
@@ -1512,11 +1634,18 @@ document.getElementById('exitBtn').onclick = async () => {
     return;
   }
   await stopShare(true);
+  await persistOpenRoom();
   showHome();
 };
 
 window.addEventListener('pagehide', () => {
   if (viewerId && room) navigator.sendBeacon?.('signal.php?action=leave&room=' + room + '&viewer=' + viewerId);
+  if (token && room && hostSecret && !viewerId) {
+    const title = (document.getElementById('roomTitle').value || '').trim() || 'Комната';
+    const names = (typeof onlineNames !== 'undefined' && onlineNames) ? [...onlineNames].filter(Boolean).slice(0, 8) : [login];
+    const body = JSON.stringify({ room, host_secret: hostSecret, title, role: 'host', token, people: names });
+    navigator.sendBeacon?.('auth.php?action=save_room&token=' + encodeURIComponent(token), new Blob([body], { type: 'application/json' }));
+  }
 });
 
 
@@ -1566,7 +1695,10 @@ document.getElementById('roomTitle').onchange = async () => {
   try {
     await signal('set_title', hostQuery(), { title, host_secret: hostSecret, host_session: hostSession });
   } catch (e) {}
-  if (token) apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host' }).catch(() => {});
+  if (login) rememberRoom({ code: room, host_secret: hostSecret, title, role: 'host' });
+  if (token) apiAuth('save_room', { room, host_secret: hostSecret, title, role: 'host' }).then(r => {
+    if (r && Array.isArray(r.rooms)) writeRoomCache(mergeRoomLists(r.rooms, readRoomCache()));
+  }).catch(() => {});
 };
 let chatSince = 0;
 let chatTimer = null;
@@ -1791,8 +1923,15 @@ function bootCanvases() {
   if (token) {
     try {
       const r = await apiAuth('me');
-      if (r.ok) { login = r.login || login; land(r.rooms || []); return; }
-    } catch (e) {}
+      if (r && r.ok) {
+        login = r.login || login;
+        localStorage.setItem('ss_login', login);
+        land(r.rooms || []);
+        return;
+      }
+    } catch (e) {
+      if (login) { land(readRoomCache()); return; }
+    }
     token = ''; login = '';
     localStorage.removeItem('ss_token'); localStorage.removeItem('ss_login');
   }

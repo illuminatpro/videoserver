@@ -12,7 +12,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') exit(0);
 $roomsDir = __DIR__ . '/rooms';
 if (!is_dir($roomsDir)) mkdir($roomsDir, 0755, true);
 
+$roomsMetaDir = __DIR__ . '/data/rooms';
 foreach (glob($roomsDir . '/*.json') as $file) {
+    $code = basename($file, '.json');
+    if (is_file($roomsMetaDir . '/' . $code . '.json')) continue;
     if (filemtime($file) < time() - 86400 * 7) @unlink($file);
 }
 
@@ -161,6 +164,22 @@ if ($action === 'claim_host') {
     $secret = preg_replace('/[^a-zA-Z0-9]/', '', $input['host_secret'] ?? '');
     if (!$code || !$secret) out(['error' => 'Нужны код комнаты и секрет хоста']);
     $roomFile = $roomsDir . '/' . $code . '.json';
+    if (!is_file($roomFile)) {
+        $metaFile = __DIR__ . '/data/rooms/' . $code . '.json';
+        $meta = is_file($metaFile) ? json_decode(file_get_contents($metaFile), true) : null;
+        $known = (string)($meta['host_secret'] ?? '');
+        if ($known !== '' && !hash_equals($known, $secret)) out(['error' => 'Неверный секрет хоста']);
+        file_put_contents($roomFile, json_encode([
+            'created' => time(),
+            'host_secret' => $secret,
+            'host_session' => bin2hex(random_bytes(8)),
+            'host_seen' => time(),
+            'sharing' => false,
+            'epoch' => 1,
+            'viewers' => new stdClass(),
+            'title' => (string)($meta['title'] ?? '')
+        ], JSON_UNESCAPED_UNICODE));
+    }
     with_room($roomFile, function ($data, $save) use ($secret, $code) {
         if (!$data) out(['error' => 'Комната не найдена']);
         if (!secret_ok($data, $secret)) out(['error' => 'Неверный секрет хоста']);
