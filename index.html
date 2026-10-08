@@ -5,40 +5,135 @@
   <meta name="google" content="notranslate" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ezomatrix</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg:#1c2433; --panel:#2a3342; --line:#323c4c; --text:#e8eef6;
       --muted:#9aa6b5; --yellow:#f0b429; --blue:#2f67f6; --green:#3dd68c; --danger:#e23d4a;
       --hover-edge:rgba(61,214,140,.7);
+      --acc:#2bff63; --bright:#aaffcc; --acc-dim:rgba(43,255,99,.35); --acc-soft:rgba(43,255,99,.16);
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#000;color:var(--text);min-height:100vh}
     button,input,textarea{font-family:inherit}
     button{cursor:pointer;border:none;background:transparent;color:inherit}
     .hidden{display:none!important}
-    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
-    body.rooms,body.watching{background:#121820}
-    body.rooms #bgCanvas,body.watching #bgCanvas{visibility:hidden}
-    #shell{position:relative;z-index:1;min-height:100vh}
+    #bgCanvas{position:fixed;inset:0;width:100%;height:100%;z-index:0}
+    #crt{position:fixed;inset:0;pointer-events:none;z-index:2}
+    #crt::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 3px)}
+    body.rooms,body.watching{background:#121820;overflow:auto}
+    body:not(.rooms):not(.watching){overflow:hidden;background:#000}
+    body.rooms #bgCanvas,body.watching #bgCanvas,body.rooms #crt,body.watching #crt{visibility:hidden}
+    #shell{position:relative;z-index:3;min-height:100vh}
+    body:not(.rooms):not(.watching) #shell{pointer-events:none}
     body.watching #shell{display:none}
 
     .logo-mark{width:32px;height:32px;display:inline-grid;place-items:center;flex:0 0 auto}
     .brand-name{font-weight:700;letter-spacing:-.02em;font-size:1.15rem}
     .brand-name b{font-weight:800}
 
-    .auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
-    .auth-card{width:min(440px,100%);background:rgba(6,16,12,.82);border:1px solid #1c4630;border-radius:16px;padding:22px 20px 20px;backdrop-filter:blur(10px);box-shadow:0 24px 80px rgba(0,0,0,.45)}
-    .brand-lockup{display:flex;gap:12px;align-items:center;margin-bottom:8px}
-    .brand-lockup h1{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:1.7rem;letter-spacing:.12em;background:linear-gradient(180deg,#eaffea,#39ff6a);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-    .sub{color:#8fb89a;font-size:.92rem}
-    #signalCanvas{width:100%;height:72px;display:block;margin:8px 0 12px}
-    .tabs{display:flex;gap:8px;margin-bottom:12px}
-    .tabs button{flex:1;border:1px solid #1c4630;border-radius:10px;padding:8px;color:#d7ffe2}
-    .tabs button.active{background:#12c45a;color:#04210f;border-color:#12c45a;font-weight:700}
-    input[type=text],input[type=password],textarea{width:100%;padding:12px;border-radius:10px;border:1px solid #1c4630;background:#07140c;color:#e7ffe9;font-size:1rem;outline:none;margin:6px 0}
-    .auth-card input:focus{border-color:#39ff6a}
-    .btn{background:#12c45a;color:#04210f;border-radius:10px;padding:12px 16px;font-weight:700;width:100%;margin-top:8px}
-    .btn-out{background:transparent;color:#d7ffe2;border:1px solid #1c4630;border-radius:10px;padding:12px 16px;width:100%;margin-top:8px}
+    #authPanel{
+      position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;
+      font-family:'Manrope',system-ui,-apple-system,sans-serif;pointer-events:none;
+    }
+    #authPanel .tilt{position:relative;pointer-events:auto;width:min(420px,92vw)}
+    #authPanel .tilt.shake{animation:shakeX .3s}
+    @keyframes shakeX{25%{transform:translateX(-4px)}75%{transform:translateX(3px)}}
+    #authPanel .tilt::before{
+      content:"";position:absolute;inset:-70px;z-index:-1;
+      background:radial-gradient(55% 55% at 50% 50%,rgba(0,0,0,.5),transparent 72%);
+      filter:blur(8px);pointer-events:none;
+    }
+    #orbs{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+    #authPanel .card{
+      width:100%;background:rgba(11,16,14,.58);
+      backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);
+      border:1px solid rgba(255,255,255,.10);border-radius:22px;padding:30px 30px 22px;
+      box-shadow:0 30px 90px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.08);
+      color:#e9efec;animation:cardIn .7s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes cardIn{from{opacity:0;transform:translateY(18px) scale(.97)}to{opacity:1;transform:none}}
+    #authPanel .brand{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;color:#cfe0d8}
+    #authPanel .brand .dot{width:9px;height:9px;border-radius:50%;background:linear-gradient(135deg,var(--acc),#7dd3fc);box-shadow:0 0 14px var(--acc-dim)}
+    #authPanel h1{font-size:27px;font-weight:800;letter-spacing:-.01em;color:#f4f8f6;margin:15px 0 8px}
+    #authPanel .sub{font-size:13.5px;line-height:1.55;color:#93a59d;margin-bottom:18px}
+    #authPanel .seg{
+      position:relative;display:grid;grid-template-columns:repeat(3,1fr);
+      background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+      border-radius:14px;padding:4px;margin-bottom:20px;
+    }
+    #authPanel .seg-ind{
+      position:absolute;top:4px;left:4px;width:calc((100% - 8px)/3);height:calc(100% - 8px);
+      background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.10);
+      border-radius:11px;box-shadow:0 6px 16px rgba(0,0,0,.3);
+      transition:transform .35s cubic-bezier(.22,1,.36,1);
+    }
+    #authPanel .seg button{
+      position:relative;z-index:1;padding:9px 4px;font:700 12.5px 'Manrope',sans-serif;color:#8ba39a;
+      background:none;border:none;cursor:pointer;border-radius:11px;
+    }
+    #authPanel .seg button.active{color:#f2f7f4}
+    #authPanel .fields{transition:opacity .3s,filter .3s}
+    #authForm.guest .fields{opacity:.35;pointer-events:none;filter:saturate(.5)}
+    #authPanel .guestNote{display:none;font-size:12.5px;line-height:1.5;color:#8ba39a;background:rgba(255,255,255,.04);border:1px dashed rgba(255,255,255,.14);padding:10px 12px;border-radius:10px;margin-bottom:6px}
+    #authForm.guest .guestNote{display:block}
+    #authPanel .field{display:block;margin-bottom:14px}
+    #authPanel .field>span{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#7f938b;margin-bottom:7px}
+    #authPanel .passwrap{position:relative;display:block}
+    #authPanel input{
+      width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);
+      border-radius:12px;padding:12px 14px;font:500 15px 'Manrope',sans-serif;color:#eef4f1;
+      outline:none;caret-color:var(--acc);margin:0;
+    }
+    #authPanel .passwrap input{padding-right:46px}
+    #authPanel input::placeholder{color:#5d6d66}
+    #authPanel input:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft);background:rgba(255,255,255,.07)}
+    #eyeBtn{
+      position:absolute;right:6px;top:50%;transform:translateY(-50%);
+      width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+      background:none;border:none;border-radius:9px;color:#7f938b;cursor:pointer;
+    }
+    #eyeBtn:hover{color:#fff;background:rgba(255,255,255,.07)}
+    #eyeBtn .off{display:none}
+    #eyeBtn.showing .on{display:none}
+    #eyeBtn.showing .off{display:block}
+    #authStatus{min-height:19px;font-size:12.5px;font-weight:600;color:#ff9b8a;margin:2px 0 8px;opacity:0;transform:translateY(-4px);transition:.25s}
+    #authStatus.show{opacity:1;transform:none}
+    #authPanel .primary{
+      position:relative;overflow:hidden;width:100%;height:48px;border:none;border-radius:13px;
+      background:var(--acc);color:#05130b;font:800 15px 'Manrope',sans-serif;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:9px;
+      box-shadow:0 8px 26px var(--acc-dim);animation:tvflick 6s linear infinite;
+    }
+    #authPanel .primary::before{content:"";position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.07) 0 1px,transparent 1px 3px)}
+    #authPanel .primary::after{
+      content:"";position:absolute;top:-25%;bottom:-25%;left:-45%;width:34%;
+      background:linear-gradient(100deg,transparent 0%,rgba(255,255,255,.38) 50%,transparent 100%);
+      transform:skewX(-18deg);pointer-events:none;animation:tvglare 6s linear infinite;
+    }
+    @keyframes tvflick{
+      0%,100%{filter:brightness(1)}
+      7.8%{filter:brightness(1)}8%{filter:brightness(1.17)}8.4%{filter:brightness(.85)}9%{filter:brightness(1.06)}9.6%{filter:brightness(1)}
+      34%{filter:brightness(1)}34.5%{filter:brightness(.91)}35.2%{filter:brightness(1.08)}36%{filter:brightness(1)}
+      61%{filter:brightness(1.11)}61.6%{filter:brightness(.94)}62.2%{filter:brightness(1.05)}63%{filter:brightness(1)}
+      87%{filter:brightness(1)}87.4%{filter:brightness(.89)}88%{filter:brightness(1.03)}88.8%{filter:brightness(1)}
+    }
+    @keyframes tvglare{0%,55%{left:-45%}72%{left:118%}100%{left:118%}}
+    #authPanel .primary:hover{transform:translateY(-1px)}
+    #authPanel .primary:disabled{opacity:.65;cursor:default;transform:none}
+    #authPanel .primary .spinner{display:none;width:16px;height:16px;border-radius:50%;border:2px solid rgba(5,19,11,.3);border-top-color:#05130b;animation:spin .7s linear infinite}
+    #authPanel .primary.loading .spinner{display:inline-block}
+    #authPanel .primary .check{display:none}
+    #authPanel .primary.ok .check{display:block}
+    #authPanel .primary.ok .spinner{display:none}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #authPanel .feats{display:flex;justify-content:space-between;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)}
+    #authPanel .feat{display:flex;flex-direction:column;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:#7f938b;text-align:center}
+    #authPanel .feat svg{color:#9fb8ae}
+    #authPanel .foot{margin-top:14px;font-size:10.5px;color:#66756f;text-align:center}
+    #authPanel .invite{margin-bottom:14px}
     .status{font-size:.9rem;color:var(--muted);margin:8px 0;min-height:1.2em}
     .status.ok{color:var(--green)}.status.err{color:#ff8aa0}
     .invite{background:rgba(240,180,41,.12);border:1px solid rgba(240,180,41,.45);color:#ffe7a8;border-radius:10px;padding:10px 12px;font-size:.85rem;margin-bottom:10px}
@@ -160,7 +255,7 @@
     .modal-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
     #closeInvite,#backHome2{background:#4a5568;color:#fff;border-radius:8px;padding:8px 16px}
     #joinBtn{width:auto;margin:0;background:var(--blue);color:#fff;border-radius:8px;padding:10px 16px}
-    #viewer input{background:#0e141c;border:1px solid #445066;color:#fff}
+    #viewer input{width:100%;background:#0e141c;border:1px solid #445066;color:#fff;border-radius:8px;padding:10px 12px}
 
     .btn,.btn-out,.tabs button,.btn-dark,.btn-ghost,.btn-icon,.btn-invite,.avatar-btn,
     #copyWatchLink,#startShare,#stopShare,#exitBtn,.icon-btn,.row-btns button,#chatForm button,
@@ -184,48 +279,76 @@
       .side{width:100%;height:46vh;border-left:none;border-top:1px solid #222a36}
       .watch-center{display:none}
     }
+    @media (max-width:720px){
+      #authPanel .card{padding:24px 20px 18px}
+      #authPanel h1{font-size:23px}
+    }
     @media (prefers-reduced-motion:reduce){
-      #bgCanvas,#signalCanvas{display:none}
+      #bgCanvas,#crt,#orbs{display:none}
+      #authPanel .primary,#authPanel .primary::after{animation:none}
     }
   </style>
 </head>
 <body>
   <canvas id="bgCanvas" aria-hidden="true"></canvas>
+  <div id="crt" aria-hidden="true"></div>
 
   <div id="shell">
-    <div id="authPanel" class="auth-wrap">
-      <div class="auth-card">
-        <div class="brand-lockup">
-          <span class="logo-mark" aria-hidden="true">
-            <svg viewBox="0 0 32 32" width="32" height="32"><rect width="32" height="32" rx="7" fill="#f0b429"/><path d="M8 8h16v3.2H12.4V14h9v3h-9v4.6H24V25H8z" fill="#fff"/></svg>
-          </span>
-          <div>
-            <h1>Ezomatrix</h1>
-            <p class="sub">Экран вместе с друзьями</p>
+    <div id="authPanel">
+      <canvas id="orbs" aria-hidden="true"></canvas>
+      <div class="tilt" id="tilt">
+        <div class="card">
+          <div class="brand"><span class="dot"></span>Ezomatrix</div>
+          <h1>Смотрите вместе</h1>
+          <p class="sub">Запустите трансляцию — друзья подключатся по ссылке и увидят ваш экран в реальном времени.</p>
+          <div class="invite hidden" id="inviteHint"></div>
+          <div class="seg" id="seg">
+            <div class="seg-ind" id="segInd"></div>
+            <button type="button" class="active" id="tabLogin">Вход</button>
+            <button type="button" id="tabReg">Регистрация</button>
+            <button type="button" id="tabGuest">Без входа</button>
           </div>
+          <form id="authForm" autocomplete="off" novalidate>
+            <div class="fields">
+              <label class="field">
+                <span>Логин</span>
+                <input id="loginName" type="text" maxlength="32" spellcheck="false" placeholder="латиница, от 3 символов" autocomplete="username" />
+              </label>
+              <label class="field">
+                <span>Пароль</span>
+                <span class="passwrap">
+                  <input id="loginPass" type="password" maxlength="64" placeholder="минимум 4 символа" autocomplete="current-password" />
+                  <button type="button" id="eyeBtn" aria-label="Показать пароль">
+                    <svg class="on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg>
+                  </button>
+                </span>
+              </label>
+            </div>
+            <div class="guestNote">Можно без аккаунта. Комната сохранится, только если войти.</div>
+            <div id="authStatus"></div>
+            <button class="primary" id="btnLogin" type="submit">
+              <span class="spinner"></span>
+              <svg class="check" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+              <span id="btnLabel">Войти</span>
+            </button>
+          </form>
+          <div class="feats">
+            <div class="feat">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+              <span>Общий экран</span>
+            </div>
+            <div class="feat">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.6-3 2.8-4.6 5.5-4.6s4.9 1.6 5.5 4.6"/><circle cx="17" cy="9" r="2.6"/><path d="M16 14.7c2.3.2 3.9 1.6 4.5 4.3"/></svg>
+              <span>Друзья по ссылке</span>
+            </div>
+            <div class="feat">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 1 0-5.7-5.7l-1.2 1.2"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 1 0 5.7 5.7l1.2-1.2"/></svg>
+              <span>Ссылка-приглашение</span>
+            </div>
+          </div>
+          <div class="foot">Войдите, чтобы комната осталась в аккаунте</div>
         </div>
-        <canvas id="signalCanvas" width="800" height="140" aria-hidden="true"></canvas>
-        <div class="invite hidden" id="inviteHint"></div>
-        <div class="tabs">
-          <button class="btn-out active" id="tabLogin" type="button">Вход</button>
-          <button class="btn-out" id="tabReg" type="button">Регистрация</button>
-          <button class="btn-out" id="tabGuest" type="button">Без входа</button>
-        </div>
-        <div id="loginForm">
-          <input type="text" id="loginName" placeholder="Логин" autocomplete="username" />
-          <input type="password" id="loginPass" placeholder="Пароль" autocomplete="current-password" />
-          <button class="btn" id="btnLogin" type="button">Войти</button>
-        </div>
-        <div id="regForm" class="hidden">
-          <input type="text" id="regName" placeholder="Логин (лат.)" autocomplete="username" />
-          <input type="password" id="regPass" placeholder="Пароль (мин. 4)" autocomplete="new-password" />
-          <button class="btn" id="btnReg" type="button">Зарегистрироваться</button>
-        </div>
-        <div id="guestForm" class="hidden">
-          <p class="status">Можно без аккаунта. Комната сохранится только если войти.</p>
-          <button class="btn" id="btnGuest" type="button">Продолжить без входа</button>
-        </div>
-        <div class="status" id="authStatus"></div>
       </div>
     </div>
 
@@ -604,16 +727,40 @@ function leaveWait() {
   document.body.classList.remove('waiting');
 }
 
+let authMode = 'login';
+function showAuthErr(text) {
+  const st = document.getElementById('authStatus');
+  st.textContent = text || '';
+  st.classList.toggle('show', !!text);
+  const tilt = document.getElementById('tilt');
+  if (!text || !tilt) return;
+  tilt.classList.remove('shake');
+  void tilt.offsetWidth;
+  tilt.classList.add('shake');
+}
 function showTab(which) {
-  const map = { login: 0, reg: 1, guest: 2 };
-  ['tabLogin', 'tabReg', 'tabGuest'].forEach((id, i) => document.getElementById(id).classList.toggle('active', i === map[which]));
-  document.getElementById('loginForm').classList.toggle('hidden', which !== 'login');
-  document.getElementById('regForm').classList.toggle('hidden', which !== 'reg');
-  document.getElementById('guestForm').classList.toggle('hidden', which !== 'guest');
+  authMode = which;
+  const order = { login: 0, reg: 1, guest: 2 };
+  ['tabLogin', 'tabReg', 'tabGuest'].forEach((id, i) => document.getElementById(id).classList.toggle('active', i === order[which]));
+  const ind = document.getElementById('segInd');
+  if (ind) ind.style.transform = 'translateX(' + (order[which] * 100) + '%)';
+  document.getElementById('authForm').classList.toggle('guest', which === 'guest');
+  const labels = { login: 'Войти', reg: 'Создать аккаунт', guest: 'Продолжить как гость' };
+  document.getElementById('btnLabel').textContent = labels[which];
+  const btn = document.getElementById('btnLogin');
+  btn.classList.remove('loading', 'ok');
+  btn.disabled = false;
+  showAuthErr('');
 }
 document.getElementById('tabLogin').onclick = () => showTab('login');
 document.getElementById('tabReg').onclick = () => showTab('reg');
 document.getElementById('tabGuest').onclick = () => showTab('guest');
+document.getElementById('eyeBtn').onclick = () => {
+  const pass = document.getElementById('loginPass');
+  const show = pass.type === 'password';
+  pass.type = show ? 'text' : 'password';
+  document.getElementById('eyeBtn').classList.toggle('showing', show);
+};
 
 function showHome(rooms) {
   stopRoomSide();
@@ -683,28 +830,45 @@ function land(rooms) {
   }
 }
 
-document.getElementById('btnLogin').onclick = async () => {
-  const st = document.getElementById('authStatus');
-  st.textContent = '…'; st.className = 'status';
-  const r = await apiAuth('login', { login: document.getElementById('loginName').value.trim(), password: document.getElementById('loginPass').value });
-  if (r.error) { st.textContent = r.error; st.className = 'status err'; return; }
-  token = r.token; login = r.login;
-  localStorage.setItem('ss_token', token); localStorage.setItem('ss_login', login);
-  land(r.rooms || []);
-};
-document.getElementById('btnReg').onclick = async () => {
-  const st = document.getElementById('authStatus');
-  st.textContent = '…'; st.className = 'status';
-  const r = await apiAuth('register', { login: document.getElementById('regName').value.trim(), password: document.getElementById('regPass').value });
-  if (r.error) { st.textContent = r.error; st.className = 'status err'; return; }
-  token = r.token; login = r.login;
-  localStorage.setItem('ss_token', token); localStorage.setItem('ss_login', login);
-  land([]);
-};
-document.getElementById('btnGuest').onclick = () => {
-  token = ''; login = '';
-  localStorage.removeItem('ss_token'); localStorage.removeItem('ss_login');
-  land([]);
+document.getElementById('authForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('btnLogin');
+  if (btn.disabled) return;
+  if (authMode === 'guest') {
+    token = ''; login = '';
+    localStorage.removeItem('ss_token'); localStorage.removeItem('ss_login');
+    btn.classList.add('ok');
+    document.getElementById('btnLabel').textContent = 'Готово';
+    land([]);
+    return;
+  }
+  const name = document.getElementById('loginName').value.trim();
+  const pw = document.getElementById('loginPass').value;
+  btn.disabled = true;
+  btn.classList.add('loading');
+  document.getElementById('btnLabel').textContent = 'Подключение…';
+  try {
+    const r = await apiAuth(authMode === 'reg' ? 'register' : 'login', { login: name, password: pw });
+    if (r.error) {
+      showAuthErr(r.error);
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      document.getElementById('btnLabel').textContent = authMode === 'reg' ? 'Создать аккаунт' : 'Войти';
+      return;
+    }
+    token = r.token; login = r.login;
+    localStorage.setItem('ss_token', token); localStorage.setItem('ss_login', login);
+    btn.classList.remove('loading');
+    btn.classList.add('ok');
+    document.getElementById('btnLabel').textContent = 'Готово';
+    await new Promise(res => setTimeout(res, 280));
+    land(authMode === 'reg' ? [] : (r.rooms || []));
+  } catch (err) {
+    showAuthErr('Нет связи с сервером');
+    btn.classList.remove('loading');
+    btn.disabled = false;
+    document.getElementById('btnLabel').textContent = authMode === 'reg' ? 'Создать аккаунт' : 'Войти';
+  }
 };
 document.getElementById('btnLogout').onclick = async () => {
   token = '';
@@ -1808,109 +1972,230 @@ document.getElementById('chatForm').onsubmit = async e => {
 function bootCanvases() {
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduce) return;
-  const bg = document.getElementById('bgCanvas');
-  const sig = document.getElementById('signalCanvas');
-  const bgx = bg.getContext('2d');
-  const sx = sig.getContext('2d');
-  const glyphs = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789';
-  const streams = [];
-  let built = '';
-  let last = 0;
-  function fit(c, ctx) {
-    const dpr = Math.min(devicePixelRatio || 1, 2);
-    const w = c.clientWidth || innerWidth;
-    const h = c.clientHeight || innerHeight;
-    if (c.width !== Math.floor(w * dpr) || c.height !== Math.floor(h * dpr)) {
-      c.width = Math.floor(w * dpr);
-      c.height = Math.floor(h * dpr);
-    }
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    return { w, h };
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  const FS = 32;
+  let W = 0, H = 0, DPR = 1, cols = 0;
+  const columns = [], waves = [];
+  let speedFactor = 0.69;
+  const CHARS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜｦﾝ0123456789AZ:*+=<>#'.split('');
+  const rc = () => CHARS[(Math.random() * CHARS.length) | 0];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const rgba = (c, a) => 'rgba(' + Math.round(c[0]) + ',' + Math.round(c[1]) + ',' + Math.round(c[2]) + ',' + a + ')';
+  const PALETTES = [
+    { trail: [43, 255, 99], head: [180, 255, 210] },
+    { trail: [0, 229, 255], head: [170, 244, 255] },
+    { trail: [255, 176, 0], head: [255, 224, 160] },
+    { trail: [196, 120, 255], head: [232, 206, 255] }
+  ];
+  let palIdx = 0, cTimer = 0, cssT = 0;
+  const trail = PALETTES[0].trail.slice(), head = PALETTES[0].head.slice();
+  let colTrail = 'rgb(43,255,99)', colHead = 'rgb(180,255,210)';
+  const glow = document.createElement('canvas');
+  glow.width = 64; glow.height = 64;
+  function paintGlow() {
+    const g = glow.getContext('2d');
+    g.clearRect(0, 0, 64, 64);
+    const rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    rg.addColorStop(0, rgba(head, 0.5));
+    rg.addColorStop(0.45, rgba(trail, 0.16));
+    rg.addColorStop(1, rgba(trail, 0));
+    g.fillStyle = rg;
+    g.fillRect(0, 0, 64, 64);
   }
-  function layout(w, h) {
-    const font = w < 700 ? 28 : 34;
-    const pitch = font + 16;
-    const key = w + 'x' + h + 'x' + font;
-    if (key === built) return font;
-    built = key;
-    streams.length = 0;
-    const cols = Math.max(1, Math.ceil(w / pitch));
+  paintGlow();
+  function updateColor(dt) {
+    const t = PALETTES[palIdx], k = Math.min(1, dt * 0.9);
+    for (let i = 0; i < 3; i++) {
+      trail[i] += (t.trail[i] - trail[i]) * k;
+      head[i] += (t.head[i] - head[i]) * k;
+    }
+    colTrail = 'rgb(' + Math.round(trail[0]) + ',' + Math.round(trail[1]) + ',' + Math.round(trail[2]) + ')';
+    colHead = 'rgb(' + Math.round(head[0]) + ',' + Math.round(head[1]) + ',' + Math.round(head[2]) + ')';
+    cssT -= dt;
+    if (cssT <= 0) {
+      cssT = 0.15;
+      paintGlow();
+      const s = document.documentElement.style;
+      s.setProperty('--acc', colTrail);
+      s.setProperty('--bright', colHead);
+      s.setProperty('--acc-dim', rgba(trail, 0.35));
+      s.setProperty('--acc-soft', rgba(trail, 0.16));
+    }
+    cTimer += dt;
+    if (cTimer >= 10) palIdx = (palIdx + 1) % PALETTES.length, cTimer = 0;
+  }
+  function roll(c) {
+    c.speed = 40 + Math.pow(Math.random(), 1.6) * 130;
+    c.len = (12 + Math.random() * 16) * FS;
+  }
+  function make(startY) {
+    const c = { y: startY, glyphs: [], ch: rc() };
+    roll(c);
+    const start = Math.floor((startY - FS / 2) / FS) * FS + FS / 2;
+    c.nextY = start + FS;
+    for (let y = start; y > startY - c.len; y -= FS) c.glyphs.push({ y, ch: rc() });
+    return c;
+  }
+  function resize() {
+    DPR = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    canvas.width = Math.round(W * DPR);
+    canvas.height = Math.round(H * DPR);
+    canvas.style.width = W + 'px';
+    canvas.style.height = H + 'px';
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    cols = Math.ceil(W / FS);
+    columns.length = 0;
+    for (let i = 0; i < cols; i++) columns.push(make(rnd(-H * 0.15, H * 0.95)));
+    waves.length = 0;
+  }
+  function resting() {
+    return document.hidden || document.body.classList.contains('watching') || document.body.classList.contains('rooms');
+  }
+  function step(dt) {
+    for (let i = 0; i < columns.length; i++) {
+      const c = columns[i];
+      c.y += c.speed * speedFactor * dt;
+      let guard = 0;
+      while (c.y >= c.nextY && guard++ < 10) {
+        c.glyphs.push({ y: c.nextY, ch: c.ch });
+        c.ch = rc();
+        c.nextY += FS;
+      }
+      while (c.glyphs.length && c.y - c.glyphs[0].y > c.len) c.glyphs.shift();
+      if (c.y - c.len > H + FS * 2) {
+        roll(c);
+        c.y = -rnd(0, H * 0.25);
+        c.glyphs.length = 0;
+        c.ch = rc();
+        c.nextY = Math.floor((c.y - FS / 2) / FS) * FS + FS / 2 + FS;
+      }
+    }
+    for (let i = waves.length - 1; i >= 0; i--) {
+      waves[i].t += dt;
+      if (waves[i].t > 0.9) waves.splice(i, 1);
+    }
+  }
+  function render() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.font = FS + 'px "JetBrains Mono",Consolas,monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = rgba(trail, 0.07);
     for (let i = 0; i < cols; i++) {
-      if (Math.random() < 0.4) continue;
-      const len = 12 + ((Math.random() * 14) | 0);
-      const chars = [];
-      for (let k = 0; k < len; k++) chars.push(glyphs[(Math.random() * glyphs.length) | 0]);
-      streams.push({
-        x: i * pitch,
-        y: Math.random() * (h + len * font) - len * font,
-        speed: 14 + Math.random() * 22,
-        chars,
-        spin: Math.random() * 0.2,
-        font
-      });
+      const c = columns[i];
+      ctx.fillRect(i * FS, c.y - FS * 6, FS, FS * 6);
     }
-    return font;
-  }
-  function drawBg(now) {
-    const dt = last ? Math.min(0.05, (now - last) / 1000) : 0.016;
-    last = now;
-    if (document.hidden || document.body.classList.contains('watching') || document.body.classList.contains('rooms')) return;
-    const { w, h } = fit(bg, bgx);
-    const font = layout(w, h);
-    bgx.fillStyle = '#000';
-    bgx.fillRect(0, 0, w, h);
-    bgx.font = '700 ' + font + 'px "WenQuanYi Micro Hei Mono", "Droid Sans Fallback", ui-monospace, monospace';
-    bgx.textBaseline = 'top';
-    streams.forEach(s => {
-      s.spin += dt;
-      if (s.spin > 0.14) {
-        s.spin = 0;
-        const idx = (Math.random() * s.chars.length) | 0;
-        const at = glyphs.indexOf(s.chars[idx]);
-        s.chars[idx] = glyphs[(Math.max(0, at) + 1) % glyphs.length];
+    ctx.fillStyle = colTrail;
+    for (let i = 0; i < cols; i++) {
+      const c = columns[i], x = i * FS + FS / 2, g = c.glyphs;
+      for (let k = 0; k < g.length; k++) {
+        if (g[k].y < -FS || g[k].y > H + FS) continue;
+        const a = 1 - (c.y - g[k].y) / c.len;
+        if (a <= 0.02) continue;
+        ctx.globalAlpha = a * a * 0.95;
+        ctx.fillText(g[k].ch, x, g[k].y);
       }
-      const n = s.chars.length;
-      for (let i = 0; i < n; i++) {
-        const y = s.y - i * font;
-        if (y < -font || y > h) continue;
-        if (i === 0) {
-          bgx.shadowColor = '#d8ffd8';
-          bgx.shadowBlur = 14;
-          bgx.fillStyle = '#f4fff4';
-        } else {
-          bgx.shadowBlur = 0;
-          const fade = 1 - i / n;
-          const g = Math.round(40 + 180 * fade);
-          bgx.fillStyle = 'rgb(' + Math.round(g * 0.25) + ',' + g + ',' + Math.round(g * 0.45) + ')';
-        }
-        bgx.fillText(s.chars[i], s.x, y);
-      }
-      bgx.shadowBlur = 0;
-      s.y += s.speed * dt;
-      if (s.y - n * font > h + font) s.y = -Math.random() * font * 8;
-    });
-  }
-  function drawSignal() {
-    if (document.hidden || document.body.classList.contains('rooms') || document.body.classList.contains('watching')) return;
-    const w = sig.width, h = sig.height;
-    sx.setTransform(1, 0, 0, 1, 0, 0);
-    sx.clearRect(0, 0, w, h);
-    const t = performance.now();
-    sx.beginPath();
-    for (let x = 0; x <= w; x++) {
-      const y = h / 2 + Math.sin(x / 28 + t / 420) * 18 + Math.sin(x / 11 + t / 240) * 7;
-      if (x === 0) sx.moveTo(x, y); else sx.lineTo(x, y);
     }
-    sx.strokeStyle = '#39ff6a';
-    sx.lineWidth = 2;
-    sx.stroke();
+    const s = FS * 2.2;
+    for (let i = 0; i < cols; i++) {
+      const c = columns[i];
+      if (c.y < -FS || c.y > H + FS) continue;
+      const x = i * FS + FS / 2;
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(glow, x - s / 2, c.y - s / 2, s, s);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = colHead;
+      ctx.fillText(c.ch, x, c.y);
+    }
+    for (let i = 0; i < waves.length; i++) {
+      const wv = waves[i];
+      const fade = 1 - wv.t / 0.9, R = wv.t * 720;
+      for (let k = 0; k < 50; k++) {
+        const ang = Math.random() * Math.PI * 2;
+        const rr = R * (0.94 + Math.random() * 0.12);
+        const px = wv.x + Math.cos(ang) * rr, py = wv.y + Math.sin(ang) * rr;
+        const cc = (px / FS) | 0, cr = (py / FS) | 0;
+        if (cc < 0 || cc >= cols || cr < 0) continue;
+        ctx.globalAlpha = fade * Math.random() * 0.35 + 0.04;
+        ctx.fillStyle = Math.random() < 0.12 ? colHead : colTrail;
+        ctx.fillText(rc(), cc * FS + FS / 2, cr * FS + FS / 2);
+      }
+    }
+    ctx.globalAlpha = 1;
   }
+  canvas.addEventListener('pointerdown', e => waves.push({ x: e.clientX, y: e.clientY, t: 0 }));
+  let last = performance.now();
   function loop(now) {
-    drawBg(now);
-    drawSignal();
     requestAnimationFrame(loop);
+    const dtRaw = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    last = now;
+    if (resting()) return;
+    if (innerWidth !== W || innerHeight !== H) resize();
+    updateColor(dtRaw);
+    step(dtRaw);
+    render();
   }
+  resize();
   requestAnimationFrame(loop);
+
+  const ocv = document.getElementById('orbs');
+  const octx = ocv && ocv.getContext('2d');
+  if (!octx) return;
+  let oW = 0, oH = 0, oLast = 0;
+  const ORBS = [
+    { c: [45, 212, 191], a: 0.09, r: 0.40, bx: 0.16, by: 0.30, ax: 0.07, ay: 0.06, fx: 0.11, fy: 0.16, p: 0 },
+    { c: [129, 140, 248], a: 0.08, r: 0.42, bx: 0.85, by: 0.26, ax: 0.06, ay: 0.08, fx: 0.09, fy: 0.12, p: 2.2 },
+    { c: [251, 113, 133], a: 0.06, r: 0.34, bx: 0.62, by: 0.80, ax: 0.09, ay: 0.05, fx: 0.13, fy: 0.10, p: 4.1 }
+  ];
+  const DUST = [];
+  for (let i = 0; i < 40; i++) DUST.push({ x: Math.random(), y: Math.random(), s: rnd(5, 15), r: rnd(0.7, 1.9), ph: rnd(0, 6.28), w: rnd(0.4, 1.2), a: rnd(0.12, 0.34) });
+  function resizeOrbs() {
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    oW = innerWidth; oH = innerHeight;
+    ocv.width = Math.round(oW * dpr);
+    ocv.height = Math.round(oH * dpr);
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resizeOrbs();
+  addEventListener('resize', () => { if (!resting()) resizeOrbs(); });
+  function orbsLoop(ts) {
+    requestAnimationFrame(orbsLoop);
+    if (resting()) { oLast = 0; return; }
+    if (!oLast) oLast = ts;
+    const dt = Math.min(Math.max(0, (ts - oLast) / 1000), 0.05);
+    oLast = ts;
+    const t = ts / 1000;
+    octx.clearRect(0, 0, oW, oH);
+    octx.globalCompositeOperation = 'lighter';
+    const Rmax = Math.max(oW, oH, 1);
+    ORBS.forEach(o => {
+      const cx = (o.bx + Math.sin(t * o.fx + o.p) * o.ax) * oW;
+      const cy = (o.by + Math.cos(t * o.fy + o.p) * o.ay) * oH;
+      const R = o.r * Rmax;
+      const g = octx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      g.addColorStop(0, rgba(o.c, o.a));
+      g.addColorStop(1, rgba(o.c, 0));
+      octx.fillStyle = g;
+      octx.beginPath();
+      octx.arc(cx, cy, R, 0, 6.2832);
+      octx.fill();
+    });
+    DUST.forEach(p => {
+      p.y -= p.s * dt / Math.max(oH, 1);
+      if (p.y < -0.02) { p.y = 1.02; p.x = Math.random(); }
+      const a = p.a * (0.55 + 0.45 * Math.sin(t * p.w * 2 + p.ph * 3));
+      octx.fillStyle = rgba([210, 235, 225], a);
+      octx.beginPath();
+      octx.arc((p.x + Math.sin(t * p.w + p.ph) * 0.006) * oW, p.y * oH, p.r, 0, 6.2832);
+      octx.fill();
+    });
+    octx.globalCompositeOperation = 'source-over';
+  }
+  requestAnimationFrame(orbsLoop);
 }
 
 (async function boot() {
