@@ -27,7 +27,132 @@ function load_user($login) {
     return json_decode(file_get_contents($f), true);
 }
 function save_user($login, $data) {
-    file_put_contents(user_file($login), json_encode($data, JSON_UNESCAPED_UNICODE));
+    unset($data['_login']);
+    $json = json_encode($data, JSON_UNESCAPED_UNICODE);
+    if ($json === false) return false;
+    return file_put_contents(user_file($login), $json, LOCK_EX) !== false;
+}
+function with_user($login, $fn) {
+    $file = user_file($login);
+    if (!is_file($file)) return null;
+    $fp = fopen($file, 'c+');
+    if ($fp === false) return null;
+    if (!flock($fp, LOCK_EX)) { fclose($fp); return null; }
+    try {
+        $raw = stream_get_contents($fp);
+        $u = json_decode($raw ?: '', true);
+        if (!is_array($u)) return null;
+        $next = $fn($u);
+        if (!is_array($next)) return $u;
+        unset($next['_login']);
+        $json = json_encode($next, JSON_UNESCAPED_UNICODE);
+        if ($json === false) return null;
+        rewind($fp);
+        ftruncate($fp, 0);
+        fwrite($fp, $json);
+        fflush($fp);
+        return $next;
+    } finally {
+        flock($fp, LOCK_UN);
+        fclose($fp);
+    }
+}
+function clip_text($s, $n) {
+    $s = trim((string)$s);
+    if ($s === '') return '';
+    if (function_exists('mb_substr')) return mb_substr($s, 0, $n);
+    return substr($s, 0, $n);
+}
+function issue_cookie($token) {
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    setcookie('ss_token', $token, [
+        'expires' => time() + 86400 * 90,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+}
+function clear_cookie() {
+    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    setcookie('ss_token', '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'secure' => $secure,
+        'httponly' => true,
+        'samesite' => 'Lax'
+    ]);
+}
+function clean_people($input) {
+    if (!is_array($input) || !array_key_exists('people', $input) || !is_array($input['people'])) return null;
+    $people = [];
+    foreach ($input['people'] as $name) {
+        $name = clip_text($name, 32);
+        if ($name !== '') $people[] = $name;
+        if (count($people) >= 8) break;
+    }
+    return $people;
+}
+function write_room_meta($code, $login, $secret, $title, $people) {
+    global $roomsMetaDir;
+    if (!$secret) return;
+    $prev = [];
+    $f = $roomsMetaDir . '/' . $code . '.json';
+    if (is_file($f)) $prev = json_decode(file_get_contents($f), true) ?: [];
+    $meta = [
+        'owner' => $login,
+        'host_secret' => $secret,
+        'title' => $title ?: ($prev['title'] ?? 'Комната'),
+        'people' => $people !== null ? $people : ($prev['people'] ?? []),
+        'updated' => time()
+    ];
+    file_put_contents($f, json_encode($meta, JSON_UNESCAPED_UNICODE), LOCK_EX);
+}
+function rooms_from_meta($login) {
+    global $roomsMetaDir;
+    $out = [];
+    foreach (glob($roomsMetaDir . '/*.json') as $f) {
+        $m = json_decode(file_get_contents($f), true);
+        if (!$m || ($m['owner'] ?? '') !== $login) continue;
+        $code = basename($f, '.json');
+        $out[] = [
+            'code' => $code,
+            'host_secret' => (string)($m['host_secret'] ?? ''),
+            'role' => 'host',
+            'title' => $m['title'] ?? 'Комната',
+            'people' => $m['people'] ?? [],
+            'created' => (int)($m['updated'] ?? time()),
+            'updated' => (int)($m['updated'] ?? time())
+        ];
+    }
+    return $out;
+}
+function merge_room_lists($primary, $extra) {
+    $map = [];
+    foreach ($primary as $r) {
+        if (!empty($r['code'])) $map[$r['code']] = $r;
+    }
+    foreach ($extra as $r) {
+        if (empty($r['code'])) continue;
+        if (!isset($map[$r['code']])) {
+            $map[$r['code']] = $r;
+            continue;
+        }
+        if (empty($map[$r['code']]['host_secret']) && !empty($r['host_secret'])) {
+            $map[$r['code']]['host_secret'] = $r['host_secret'];
+            $map[$r['code']]['role'] = 'host';
+        }
+        if (empty($map[$r['code']]['people']) && !empty($r['people'])) $map[$r['code']]['people'] = $r['people'];
+        if (empty($map[$r['code']]['title']) && !empty($r['title'])) $map[$r['code']]['title'] = $r['title'];
+    }
+    return array_values($map);
+}
+function account_rooms($u) {
+    $login = $u['login'] ?? '';
+    $merged = merge_room_lists($u['rooms'] ?? [], $login ? rooms_from_meta($login) : []);
+    return $merged;
 }
 function make_token() {
     return bin2hex(random_bytes(24));
@@ -47,12 +172,37 @@ function user_by_token($token) {
     }
     return null;
 }
+function token_candidates() {
+    global $input;
+    $raw = [];
+    $hdr = $_SERVER['HTTP_AUTHORIZATION']
+        ?? ($_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '')
+        ?: ($_SERVER['Authorization'] ?? '');
+    if (!$hdr) {
+        $headers = [];
+        if (function_exists('getallheaders')) $headers = getallheaders() ?: [];
+        elseif (function_exists('apache_request_headers')) $headers = apache_request_headers() ?: [];
+        foreach ($headers as $k => $v) {
+            if (strcasecmp((string)$k, 'Authorization') === 0) { $hdr = $v; break; }
+        }
+    }
+    if (preg_match('/Bearer\s+(\S+)/i', (string)$hdr, $m)) $raw[] = $m[1];
+    if (!empty($_GET['token'])) $raw[] = (string)$_GET['token'];
+    if (is_array($input) && isset($input['token'])) $raw[] = (string)$input['token'];
+    if (!empty($_COOKIE['ss_token'])) $raw[] = (string)$_COOKIE['ss_token'];
+    $out = [];
+    foreach ($raw as $token) {
+        $clean = preg_replace('/[^a-fA-F0-9]/', '', $token);
+        if ($clean !== '' && !in_array($clean, $out, true)) $out[] = $clean;
+    }
+    return $out;
+}
 function auth_user() {
-    $hdr = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
-    $token = '';
-    if (preg_match('/Bearer\s+(\S+)/i', $hdr, $m)) $token = $m[1];
-    if (!$token) $token = $_GET['token'] ?? '';
-    return user_by_token($token);
+    foreach (token_candidates() as $token) {
+        $u = user_by_token($token);
+        if ($u) return $u;
+    }
+    return null;
 }
 
 $action = $_GET['action'] ?? '';
@@ -86,7 +236,11 @@ if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         'tokens' => [$token => time() + 86400 * 90],
         'rooms' => []
     ];
-    save_user($login, $data);
+    if (!save_user($login, $data)) {
+        echo json_encode(['error' => 'Не удалось записать аккаунт']);
+        exit;
+    }
+    issue_cookie($token);
     echo json_encode(['ok' => true, 'login' => $login, 'token' => $token]);
     exit;
 }
@@ -101,19 +255,33 @@ if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
     $token = make_token();
-    if (!isset($u['tokens']) || !is_array($u['tokens'])) $u['tokens'] = [];
-    // чистим старые
-    foreach ($u['tokens'] as $t => $exp) {
-        if ($exp < time()) unset($u['tokens'][$t]);
+    $saved = with_user($u['login'], function ($fresh) use ($token) {
+        if (!isset($fresh['tokens']) || !is_array($fresh['tokens'])) $fresh['tokens'] = [];
+        foreach ($fresh['tokens'] as $t => $exp) {
+            if ($exp < time()) unset($fresh['tokens'][$t]);
+        }
+        $fresh['tokens'][$token] = time() + 86400 * 90;
+        $fresh['rooms'] = account_rooms($fresh);
+        return $fresh;
+    });
+    if (!$saved) {
+        echo json_encode(['error' => 'Не удалось записать аккаунт']);
+        exit;
     }
-    $u['tokens'][$token] = time() + 86400 * 90;
-    save_user($login, $u);
+    issue_cookie($token);
     echo json_encode([
         'ok' => true,
-        'login' => $u['login'],
+        'login' => $saved['login'],
         'token' => $token,
-        'rooms' => $u['rooms'] ?? []
+        'rooms' => $saved['rooms'] ?? []
     ]);
+    exit;
+}
+
+// ===== LOGOUT =====
+if ($action === 'logout') {
+    clear_cookie();
+    echo json_encode(['ok' => true]);
     exit;
 }
 
@@ -124,10 +292,18 @@ if ($action === 'me') {
         echo json_encode(['error' => 'Не авторизован']);
         exit;
     }
+    $rooms = account_rooms($u);
+    if ($rooms != ($u['rooms'] ?? [])) {
+        with_user($u['login'], function ($fresh) use ($rooms) {
+            $fresh['rooms'] = merge_room_lists($fresh['rooms'] ?? [], $rooms);
+            return $fresh;
+        });
+        $rooms = account_rooms(load_user($u['login']) ?: $u);
+    }
     echo json_encode([
         'ok' => true,
         'login' => $u['login'],
-        'rooms' => $u['rooms'] ?? []
+        'rooms' => $rooms
     ]);
     exit;
 }
@@ -141,45 +317,96 @@ if ($action === 'save_room' && $_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $code = preg_replace('/[^a-zA-Z0-9]/', '', $input['room'] ?? '');
     $secret = preg_replace('/[^a-zA-Z0-9]/', '', $input['host_secret'] ?? '');
-    $title = trim(mb_substr($input['title'] ?? $code, 0, 64));
-    if (!$code || !$secret) {
+    $role = (($input['role'] ?? '') === 'viewer') ? 'viewer' : 'host';
+    $title = clip_text($input['title'] ?? '', 64);
+    $people = clean_people($input);
+    if (!$code) {
+        echo json_encode(['error' => 'Нет кода комнаты']);
+        exit;
+    }
+    if ($role === 'host' && !$secret) {
         echo json_encode(['error' => 'Нет кода или секрета']);
         exit;
     }
-    $rooms = $u['rooms'] ?? [];
-    // обновить или добавить
-    $found = false;
-    foreach ($rooms as &$r) {
-        if ($r['code'] === $code) {
-            $r['host_secret'] = $secret;
-            $r['title'] = $title;
+    if ($secret) write_room_meta($code, $u['login'], $secret, $title ?: 'Комната', $people);
+    $saved = with_user($u['login'], function ($fresh) use ($code, $secret, $title, $people) {
+        $rooms = $fresh['rooms'] ?? [];
+        $found = false;
+        foreach ($rooms as &$r) {
+            if (($r['code'] ?? '') !== $code) continue;
+            if ($secret) {
+                $r['host_secret'] = $secret;
+                $r['role'] = 'host';
+            } elseif (empty($r['host_secret'])) {
+                $r['role'] = 'viewer';
+            }
+            if ($title !== '' && ($secret || empty($r['title']))) $r['title'] = $title;
+            if ($people !== null) $r['people'] = $people;
             $r['updated'] = time();
             $found = true;
             break;
         }
+        unset($r);
+        if (!$found) {
+            $rooms[] = [
+                'code' => $code,
+                'host_secret' => $secret,
+                'role' => $secret ? 'host' : 'viewer',
+                'title' => $title ?: 'Комната',
+                'people' => $people ?: [],
+                'created' => time(),
+                'updated' => time()
+            ];
+        }
+        $fresh['rooms'] = merge_room_lists($rooms, rooms_from_meta($fresh['login'] ?? ''));
+        return $fresh;
+    });
+    if (!$saved) {
+        echo json_encode(['error' => 'Не удалось сохранить комнату']);
+        exit;
     }
-    unset($r);
-    if (!$found) {
-        $rooms[] = [
-            'code' => $code,
-            'host_secret' => $secret,
-            'title' => $title,
-            'created' => time(),
-            'updated' => time()
-        ];
+    echo json_encode(['ok' => true, 'rooms' => $saved['rooms'] ?? []]);
+    exit;
+}
+
+// ===== DELETE ROOM FROM ACCOUNT =====
+if ($action === 'delete_room' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+    $u = auth_user();
+    if (!$u) {
+        echo json_encode(['error' => 'Не авторизован']);
+        exit;
     }
-    $u['rooms'] = $rooms;
-    save_user($u['login'], $u);
-
-    // мета комнат
-    global $roomsMetaDir;
-    file_put_contents($roomsMetaDir . '/' . $code . '.json', json_encode([
-        'owner' => $u['login'],
-        'host_secret' => $secret,
-        'title' => $title,
-        'updated' => time()
-    ]));
-
+    $code = preg_replace('/[^a-zA-Z0-9]/', '', $input['room'] ?? '');
+    if (!$code) {
+        echo json_encode(['error' => 'Нет кода комнаты']);
+        exit;
+    }
+    $removedHost = false;
+    $saved = with_user($u['login'], function ($fresh) use ($code, &$removedHost) {
+        $kept = [];
+        foreach (($fresh['rooms'] ?? []) as $r) {
+            if (($r['code'] ?? '') === $code) {
+                if (!empty($r['host_secret'])) $removedHost = true;
+            } else $kept[] = $r;
+        }
+        $fresh['rooms'] = $kept;
+        return $fresh;
+    });
+    if (!$saved) {
+        echo json_encode(['error' => 'Не удалось удалить комнату']);
+        exit;
+    }
+    if ($removedHost) {
+        global $roomsMetaDir;
+        $meta = $roomsMetaDir . '/' . $code . '.json';
+        if (is_file($meta)) {
+            $m = json_decode(file_get_contents($meta), true);
+            if (!$m || ($m['owner'] ?? '') === $u['login']) @unlink($meta);
+        }
+    }
+    $rooms = array_values(array_filter($saved['rooms'] ?? [], function ($r) use ($code) {
+        return ($r['code'] ?? '') !== $code;
+    }));
     echo json_encode(['ok' => true, 'rooms' => $rooms]);
     exit;
 }
@@ -191,7 +418,14 @@ if ($action === 'my_rooms') {
         echo json_encode(['error' => 'Не авторизован']);
         exit;
     }
-    echo json_encode(['ok' => true, 'rooms' => $u['rooms'] ?? []]);
+    $rooms = account_rooms($u);
+    if ($rooms != ($u['rooms'] ?? [])) {
+        with_user($u['login'], function ($fresh) {
+            $fresh['rooms'] = account_rooms($fresh);
+            return $fresh;
+        });
+    }
+    echo json_encode(['ok' => true, 'rooms' => $rooms]);
     exit;
 }
 
