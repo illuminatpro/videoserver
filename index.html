@@ -1992,16 +1992,23 @@ function bootCanvases() {
   const trail = PALETTES[0].trail.slice(), head = PALETTES[0].head.slice();
   let colTrail = 'rgb(43,255,99)', colHead = 'rgb(180,255,210)';
   const glow = document.createElement('canvas');
-  glow.width = 64; glow.height = 64;
+  const GW = 180, GH = 180, GANCHOR = 0.5;
+  glow.width = GW; glow.height = GH;
   function paintGlow() {
     const g = glow.getContext('2d');
-    g.clearRect(0, 0, 64, 64);
-    const rg = g.createRadialGradient(32, 32, 0, 32, 32, 32);
-    rg.addColorStop(0, rgba(head, 0.5));
-    rg.addColorStop(0.45, rgba(trail, 0.16));
+    g.clearRect(0, 0, GW, GH);
+    const cx = GW / 2, cy = GH * GANCHOR;
+    const rad = 72;
+    const rg = g.createRadialGradient(cx, cy, 0, cx, cy, rad);
+    rg.addColorStop(0, rgba(head, 0.42));
+    rg.addColorStop(0.18, rgba(head, 0.12));
+    rg.addColorStop(0.42, rgba(trail, 0.04));
+    rg.addColorStop(0.74, rgba(trail, 0.01));
     rg.addColorStop(1, rgba(trail, 0));
     g.fillStyle = rg;
-    g.fillRect(0, 0, 64, 64);
+    g.beginPath();
+    g.arc(cx, cy, rad, 0, Math.PI * 2);
+    g.fill();
   }
   paintGlow();
   function updateColor(dt) {
@@ -2084,11 +2091,6 @@ function bootCanvases() {
     ctx.font = FS + 'px "JetBrains Mono",Consolas,monospace';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = rgba(trail, 0.07);
-    for (let i = 0; i < cols; i++) {
-      const c = columns[i];
-      ctx.fillRect(i * FS, c.y - FS * 6, FS, FS * 6);
-    }
     ctx.fillStyle = colTrail;
     for (let i = 0; i < cols; i++) {
       const c = columns[i], x = i * FS + FS / 2, g = c.glyphs;
@@ -2100,17 +2102,28 @@ function bootCanvases() {
         ctx.fillText(g[k].ch, x, g[k].y);
       }
     }
-    const s = FS * 2.2;
+    const gw = FS * 2.35, gh = FS * 2.35;
+    ctx.globalCompositeOperation = 'lighter';
     for (let i = 0; i < cols; i++) {
       const c = columns[i];
       if (c.y < -FS || c.y > H + FS) continue;
       const x = i * FS + FS / 2;
-      ctx.globalAlpha = 0.5;
-      ctx.drawImage(glow, x - s / 2, c.y - s / 2, s, s);
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = colHead;
-      ctx.fillText(c.ch, x, c.y);
+      ctx.globalAlpha = 0.85;
+      ctx.drawImage(glow, x - gw / 2, c.y - gh * GANCHOR, gw, gh);
     }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.shadowColor = rgba(head, 0.95);
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = colHead;
+    for (let i = 0; i < cols; i++) {
+      const c = columns[i];
+      if (c.y < -FS || c.y > H + FS) continue;
+      ctx.fillText(c.ch, i * FS + FS / 2, c.y);
+    }
+    ctx.shadowBlur = 0;
     for (let i = 0; i < waves.length; i++) {
       const wv = waves[i];
       const fade = 1 - wv.t / 0.9, R = wv.t * 720;
